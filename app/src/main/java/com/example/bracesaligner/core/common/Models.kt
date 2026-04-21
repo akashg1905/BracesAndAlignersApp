@@ -1,0 +1,31 @@
+package com.example.bracesaligner.core.common
+
+data class AuthSession(
+    val accessToken: String,
+    val refreshToken: String?,
+    val userId: String
+)
+
+data class AlignerPlan(
+    val planId: String,
+    val alignerCount: Int,
+    val daysPerAligner: Int,
+    val startDateEpochDay: Long
+)
+
+data class AlignerScheduleItem(
+    val alignerNumber: Int,
+    val startEpochDay: Long,
+    val endEpochDay: Long,
+    val isCurrent: Boolean = false,
+    val startDate: String = "",
+    val endDate: String = ""
+)
+
+data class TimerState(
+    val isRunning: Boolean = false,
+    val activeSessionStart: Long? = null,
+    val todayTotalMillis: Long = 0L,
+    val warningMinutes: Int = 90,
+    val limitMinutes: Int = 120
+)
