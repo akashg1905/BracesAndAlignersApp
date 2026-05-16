@@ -16,5 +16,7 @@ data class DailySummaryRequest(
 
 data class DailySummaryResponse(
     @SerializedName("averageDailyWearHours")
-    val averageDailyWearHours: Double?
+    val averageDailyWearHours: Double?,
+    @SerializedName("averageDailyWearDisplay")
+    val averageDailyWearDisplay: String?
 )

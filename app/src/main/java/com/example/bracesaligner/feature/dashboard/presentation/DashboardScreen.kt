@@ -193,71 +193,83 @@ fun DashboardScreen(
                         modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
                     )
 
-                    if (!state.planAvailable) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(0.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(24.dp)) {
-                                Text("No active plan yet", fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = onOpenPlan,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = AlignerGreen)
-                                ) {
-                                    Text("Create Plan")
+                    when {
+                        !state.planAvailable -> {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(0.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(24.dp)) {
+                                    Text("No active plan yet", fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(
+                                        onClick = onOpenPlan,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = AlignerGreen)
+                                    ) {
+                                        Text("Create Plan")
+                                    }
                                 }
                             }
                         }
-                    } else {
-                        PhaseCard(state)
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        AvgHoursCard(state)
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        NonWearTimerCard(
-                            formattedTime = state.nonWearTimeTodayFormatted,
-                            isRunning = state.timerState.isRunning,
-                            onToggleTimer = {
-                                if (state.timerState.isRunning) onStopTimer() else onStartTimer()
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        ScanCard(onOpenScan = onOpenScan)
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            InfoCard(
-                                modifier = Modifier.weight(1f),
-                                title = "Check-up",
-                                subtitle = state.nextCheckUpDate ?: "Not scheduled",
-                                icon = Icons.Default.DateRange,
-                                iconBg = Color(0xFFE8F5E9)
+                        state.isPlanExpired -> {
+                            PlanFinishedCard(
+                                totalAligners = state.totalAligners,
+                                onOpenPlan = onOpenPlan
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            InfoCard(
-                                modifier = Modifier.weight(1f),
-                                title = "${state.streakDays} Day Streak",
-                                subtitle = "Keep it up, ${state.userName}!",
-                                icon = Icons.Default.PlayArrow,
-                                iconBg = Color(0xFFE0F7FA)
-                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            ProTipCard(state.proTip)
+                            Spacer(modifier = Modifier.height(32.dp))
                         }
+                        else -> {
+                            PhaseCard(state)
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        ProTipCard(state.proTip)
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
+                            AvgHoursCard(state)
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            NonWearTimerCard(
+                                formattedTime = state.nonWearTimeTodayFormatted,
+                                isRunning = state.timerState.isRunning,
+                                onToggleTimer = {
+                                    if (state.timerState.isRunning) onStopTimer() else onStartTimer()
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            ScanCard(onOpenScan = onOpenScan)
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                InfoCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = "Check-up",
+                                    subtitle = state.nextCheckUpDate ?: "Not scheduled",
+                                    icon = Icons.Default.DateRange,
+                                    iconBg = Color(0xFFE8F5E9)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                InfoCard(
+                                    modifier = Modifier.weight(1f),
+                                    title = "${state.streakDays} Day Streak",
+                                    subtitle = "Keep it up, ${state.userName}!",
+                                    icon = Icons.Default.PlayArrow,
+                                    iconBg = Color(0xFFE0F7FA)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            ProTipCard(state.proTip)
+
+                            Spacer(modifier = Modifier.height(32.dp))
+                        }
                     }
                 }
 
@@ -267,6 +279,43 @@ fun DashboardScreen(
                     containerColor = Color.White,
                     contentColor = AlignerGreen
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlanFinishedCard(
+    totalAligners: Int,
+    onOpenPlan: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                "Plan finished",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A1C1E)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "You completed all $totalAligners aligners for this plan. Pull to refresh to sync the latest status from your clinic.",
+                fontSize = 14.sp,
+                color = AlignerTextGrey,
+                lineHeight = 20.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onOpenPlan,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = AlignerGreen)
+            ) {
+                Text("Start a new plan")
             }
         }
     }
@@ -341,7 +390,7 @@ fun AvgHoursCard(state: DashboardUiState) {
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
-                    text = String.format(Locale.getDefault(), "%.2f", state.averageDailyHours),
+                    text = state.averageDailyWearDisplay,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1C1E)

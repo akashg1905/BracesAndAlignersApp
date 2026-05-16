@@ -10,5 +10,7 @@ data class AlignerPlanEntity(
     val alignerCount: Int,
     val daysPerAligner: Int,
     val startDateEpochDay: Long,
-    val createdAtEpochMillis: Long
+    val createdAtEpochMillis: Long,
+    /** Local copy of server status, e.g. `expired`. */
+    val planStatus: String? = null
 )
