@@ -1,18 +1,24 @@
 package com.example.bracesaligner.feature.profile.presentation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.bracesaligner.ui.theme.AlignerGreen
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,8 +27,56 @@ fun EditProfileScreen(
     onBack: () -> Unit,
     onFirstNameChange: (String) -> Unit,
     onLastNameChange: (String) -> Unit,
-    onDobChange: (String) -> Unit
+    onDobChange: (String) -> Unit,
+    onSave: () -> Unit
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    
+    // Parse the current DOB to show it in the picker when it opens
+    val initialDateMillis = remember(state.dob) {
+        try {
+            if (state.dob.isNotEmpty()) {
+                LocalDate.parse(state.dob, DateTimeFormatter.ISO_LOCAL_DATE)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialDateMillis,
+            yearRange = 1900..LocalDate.now().year
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val date = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        onDobChange(date.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK", color = AlignerGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", color = AlignerGreen)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -113,13 +167,32 @@ fun EditProfileScreen(
                     singleLine = true
                 )
 
-                // DOB - Editable
+                // DOB - Editable with DatePicker
                 OutlinedTextField(
                     value = state.dob,
-                    onValueChange = onDobChange,
-                    label = { Text("Date of Birth (YYYY-MM-DD)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    onValueChange = {},
+                    label = { Text("Date of Birth") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    singleLine = true,
+                    enabled = false, // Disable typing, enable clicking
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Select Date",
+                                tint = AlignerGreen
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = AlignerGreen
+                    )
                 )
 
                 state.error?.let { error ->
@@ -129,6 +202,31 @@ fun EditProfileScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Button(
+                    onClick = onSave,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(bottom = 16.dp),
+                    enabled = state.hasChanges && !state.isUpdating,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AlignerGreen,
+                        disabledContainerColor = Color.LightGray
+                    )
+                ) {
+                    if (state.isUpdating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

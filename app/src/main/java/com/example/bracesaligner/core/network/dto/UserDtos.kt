@@ -4,17 +4,17 @@ import com.google.gson.annotations.SerializedName
 
 data class UserProfileResponse(
     @SerializedName("id")
-    val id: String,
+    val id: Int,
     @SerializedName("email")
     val email: String,
-    @SerializedName("phone")
-    val phone: String,
+    @SerializedName("mobileNumber")
+    val mobileNumber: String,
     @SerializedName("firstName")
     val firstName: String?,
     @SerializedName("lastName")
     val lastName: String?,
     @SerializedName("dateOfBirth")
-    val dateOfBirth: String? // Assuming ISO format "YYYY-MM-DD"
+    val dateOfBirth: String?
 )
 
 data class UpdateProfileRequest(

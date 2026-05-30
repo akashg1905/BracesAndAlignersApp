@@ -6,8 +6,10 @@ import com.example.bracesaligner.core.network.api.AlignerPlanApi
 import com.example.bracesaligner.core.network.api.AuthApi
 import com.example.bracesaligner.core.network.api.NotificationApi
 import com.example.bracesaligner.core.network.api.TimerApi
+import com.example.bracesaligner.core.network.api.UserApi
 import com.example.bracesaligner.core.network.dto.RefreshTokenRequest
 import com.example.bracesaligner.core.preferences.SessionStore
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -142,10 +144,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        val gson = GsonBuilder()
+            .serializeNulls()
+            .create()
         return Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 
@@ -166,4 +171,8 @@ object NetworkModule {
     @Singleton
     fun provideNotificationApi(retrofit: Retrofit): NotificationApi =
         retrofit.create(NotificationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideUserApi(retrofit: Retrofit): UserApi = retrofit.create(UserApi::class.java)
 }

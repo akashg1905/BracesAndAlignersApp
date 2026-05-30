@@ -9,4 +9,5 @@ object Routes {
     const val SCHEDULE = "schedule"
     const val SCAN = "scan"
     const val PROFILE = "profile"
+    const val EDIT_PROFILE = "edit_profile"
 }

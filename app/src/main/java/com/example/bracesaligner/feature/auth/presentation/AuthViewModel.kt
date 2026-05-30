@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bracesaligner.feature.auth.data.AuthRepository
 import com.example.bracesaligner.feature.plan.data.PlanRepository
+import com.example.bracesaligner.feature.timer.data.TimerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,7 +28,8 @@ data class AuthUiState(
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: AuthRepository,
-    private val planRepository: PlanRepository
+    private val planRepository: PlanRepository,
+    private val timerRepository: TimerRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
@@ -66,9 +69,13 @@ class AuthViewModel @Inject constructor(
                     phoneNumber = _uiState.value.phoneNumber,
                     code = _uiState.value.otpCode
                 )
-                // Sync plan after successful login. Catching errors to prevent login crash if plan doesn't exist.
+                // Sync plan and summary after successful login. 
                 try {
                     planRepository.syncActivePlan()
+                    // Fetch summary only if plan is available
+                    if (planRepository.observePlan().first() != null) {
+                        timerRepository.refreshSummary()
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

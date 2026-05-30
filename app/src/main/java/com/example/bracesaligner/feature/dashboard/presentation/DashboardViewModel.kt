@@ -93,9 +93,13 @@ class DashboardViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            Log.d(TAG, "[INIT] Syncing active plan from backend")
+            Log.d(TAG, "[INIT] Syncing active plan and summary from backend")
             planRepository.syncActivePlan()
-            Log.d(TAG, "[INIT] Active plan sync finished")
+            // Fetch summary if plan is available (check after sync)
+            if (planRepository.observePlan().first() != null) {
+                timerRepository.refreshSummary()
+            }
+            Log.d(TAG, "[INIT] Sync finished")
         }
         viewModelScope.launch {
             dashboardFlow.collect {
@@ -125,6 +129,9 @@ class DashboardViewModel @Inject constructor(
     fun refresh() = viewModelScope.launch {
         _uiState.value = _uiState.value.copy(isRefreshing = true)
         planRepository.syncActivePlan()
+        if (planRepository.observePlan().first() != null) {
+            timerRepository.refreshSummary()
+        }
         _uiState.value = _uiState.value.copy(isRefreshing = false)
     }
 

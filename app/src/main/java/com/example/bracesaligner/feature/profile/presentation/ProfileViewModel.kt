@@ -17,6 +17,8 @@ data class ProfileUiState(
     val lastName: String = "",
     val dob: String = "",
     val isLoading: Boolean = false,
+    val isUpdating: Boolean = false,
+    val hasChanges: Boolean = false,
     val error: String? = null
 )
 
@@ -28,6 +30,8 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private var initialProfile: ProfileUiState? = null
+
     init {
         loadProfile()
     }
@@ -37,14 +41,16 @@ class ProfileViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val profile = userRepository.getUserProfile()
-                _uiState.value = _uiState.value.copy(
+                val loadedState = ProfileUiState(
                     email = profile.email,
-                    phone = profile.phone,
+                    phone = profile.mobileNumber,
                     firstName = profile.firstName ?: "",
                     lastName = profile.lastName ?: "",
                     dob = profile.dateOfBirth ?: "",
                     isLoading = false
                 )
+                initialProfile = loadedState
+                _uiState.value = loadedState
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -55,31 +61,51 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun updateFirstName(newValue: String) {
-        _uiState.value = _uiState.value.copy(firstName = newValue)
-        syncProfile()
+        _uiState.value = _uiState.value.copy(firstName = newValue).let { 
+            it.copy(hasChanges = checkChanges(it))
+        }
     }
 
     fun updateLastName(newValue: String) {
-        _uiState.value = _uiState.value.copy(lastName = newValue)
-        syncProfile()
+        _uiState.value = _uiState.value.copy(lastName = newValue).let {
+            it.copy(hasChanges = checkChanges(it))
+        }
     }
 
     fun updateDob(newValue: String) {
-        _uiState.value = _uiState.value.copy(dob = newValue)
-        syncProfile()
+        _uiState.value = _uiState.value.copy(dob = newValue).let {
+            it.copy(hasChanges = checkChanges(it))
+        }
     }
 
-    private fun syncProfile() {
+    private fun checkChanges(state: ProfileUiState): Boolean {
+        val initial = initialProfile ?: return false
+        return state.firstName != initial.firstName ||
+               state.lastName != initial.lastName ||
+               state.dob != initial.dob
+    }
+
+    fun saveProfile() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUpdating = true, error = null)
             try {
                 val state = _uiState.value
+                // Send values to backend exactly as they are in the input fields
                 userRepository.updateProfile(
                     firstName = state.firstName,
                     lastName = state.lastName,
                     dateOfBirth = state.dob
                 )
+                
+                // After successful update, refresh initial state
+                val updatedState = state.copy(hasChanges = false, isUpdating = false)
+                initialProfile = updatedState
+                _uiState.value = updatedState
             } catch (e: Exception) {
-                // Handle error (maybe show a toast or revert state)
+                _uiState.value = _uiState.value.copy(
+                    isUpdating = false,
+                    error = "Update failed: ${e.localizedMessage}"
+                )
             }
         }
     }

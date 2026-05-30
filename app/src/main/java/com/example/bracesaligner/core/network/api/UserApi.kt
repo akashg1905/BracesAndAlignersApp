@@ -7,9 +7,9 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 
 interface UserApi {
-    @GET("/api/users/me")
+    @GET("/api/users/me/profile")
     suspend fun getUserProfile(): UserProfileResponse
 
-    @PATCH("/api/users/me")
+    @PATCH("/api/users/me/profile")
     suspend fun updateProfile(@Body body: UpdateProfileRequest): UserProfileResponse
 }

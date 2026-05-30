@@ -31,6 +31,7 @@ import com.example.bracesaligner.ui.theme.AlignerTextGrey
 fun ProfileScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
+    onNavigateToProfileDetails: () -> Unit,
     onNavigateToProgress: () -> Unit,
     onNavigateToPlan: () -> Unit,
     onNavigateToScan: () -> Unit,
@@ -143,7 +144,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = Icons.Default.Person,
                 title = "Profile",
-                onClick = {}
+                onClick = onNavigateToProfileDetails
             )
             ProfileMenuItem(
                 icon = Icons.Default.Settings,

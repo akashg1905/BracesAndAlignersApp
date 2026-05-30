@@ -16,7 +16,9 @@ import com.example.bracesaligner.feature.dashboard.presentation.DashboardViewMod
 import com.example.bracesaligner.feature.plan.presentation.PlanSetupScreen
 import com.example.bracesaligner.feature.plan.presentation.PlanViewModel
 import com.example.bracesaligner.feature.plan.presentation.ScheduleScreen
+import com.example.bracesaligner.feature.profile.presentation.EditProfileScreen
 import com.example.bracesaligner.feature.profile.presentation.ProfileScreen
+import com.example.bracesaligner.feature.profile.presentation.ProfileViewModel
 import com.example.bracesaligner.feature.scan.presentation.WeeklyScanScreen
 import com.example.bracesaligner.feature.timer.presentation.TimerDetailScreen
 import com.example.bracesaligner.feature.timer.presentation.TimerViewModel
@@ -96,6 +98,7 @@ fun AppNavHost(navController: NavHostController) {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
                 onLogout = viewModel::logout,
+                onNavigateToProfileDetails = { navController.navigate(Routes.EDIT_PROFILE) },
                 onNavigateToProgress = {
                     navController.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
@@ -104,6 +107,18 @@ fun AppNavHost(navController: NavHostController) {
                 onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) },
                 onNavigateToSchedule = { navController.navigate(Routes.SCHEDULE) }
+            )
+        }
+        composable(Routes.EDIT_PROFILE) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
+            EditProfileScreen(
+                state = state,
+                onBack = { navController.popBackStack() },
+                onFirstNameChange = viewModel::updateFirstName,
+                onLastNameChange = viewModel::updateLastName,
+                onDobChange = viewModel::updateDob,
+                onSave = viewModel::saveProfile
             )
         }
         composable(Routes.SCHEDULE) {

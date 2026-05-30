@@ -18,6 +18,7 @@ import retrofit2.HttpException
 import com.example.bracesaligner.core.network.dto.DailySummaryRequest
 import com.example.bracesaligner.core.network.dto.NotificationDispatchRequest
 import com.example.bracesaligner.core.network.dto.TimerSessionRequest
+import com.example.bracesaligner.core.network.dto.TimerSessionResponse
 import com.example.bracesaligner.feature.timer.domain.TimerThresholdEvaluator
 import com.example.bracesaligner.core.preferences.SessionStore
 import com.example.bracesaligner.feature.notifications.TimerAlarmReceiver
@@ -81,17 +82,17 @@ class TimerRepository @Inject constructor(
         }
         val now = TimeUtils.nowMillis()
         val alignerNumber = getCurrentAlignerNumber()
-        Log.i(TAG, "[START] Creating session at $now, aligner=$alignerNumber")
-        timerDao.upsertSession(
-            NonWearSessionEntity(
-                sessionId = UUID.randomUUID().toString(),
-                alignerNumber = alignerNumber,
-                startEpochMillis = now,
-                endEpochMillis = null,
-                dateEpochDay = TimeUtils.epochDayFromMillis(now)
-            )
+        val sessionId = UUID.randomUUID().toString()
+        val session = NonWearSessionEntity(
+            sessionId = sessionId,
+            alignerNumber = alignerNumber,
+            startEpochMillis = now,
+            endEpochMillis = null,
+            dateEpochDay = TimeUtils.epochDayFromMillis(now)
         )
-        Log.i(TAG, "[START] Session persisted successfully")
+        timerDao.upsertSession(session)
+
+        Log.i(TAG, "[START] Session persisted successfully locally")
         scheduleNextAlarm(context)
     }
 
@@ -109,9 +110,11 @@ class TimerRepository @Inject constructor(
         // Immediate sync of the session just finished
         try {
             Log.d(TAG, "[STOP] Syncing finished session to backend")
+            val planId = planDao.getPlan()?.planId
             timerApi.syncSession(
                 TimerSessionRequest(
                     sessionId = active.sessionId,
+                    planId = planId,
                     alignerNumber = active.alignerNumber,
                     startEpochMillis = active.startEpochMillis,
                     endEpochMillis = now
@@ -138,15 +141,93 @@ class TimerRepository @Inject constructor(
         )
         Log.d(TAG, "[STOP] Daily summary updated: day=$epochDay totalMinutes=$totalMinutes warning=${threshold.warningReached} exceeded=${threshold.limitExceeded}")
 
+        refreshSummary()
+    }
+
+    suspend fun refreshSummary() {
         try {
-            Log.d(TAG, "[STOP] Fetching summary for average wear hours")
-            val response = timerApi.getSummary(includeDaily = false)
+            val planId = planDao.getPlan()?.planId
+            Log.d(TAG, "[SUMMARY] Fetching summary for state restoration, planId=$planId")
+            val response = timerApi.getSummary(planId = planId, includeDaily = true)
+            
+            // 1. Update Average Wear Hours in SessionStore
             response.averageDailyWearHours?.let {
                 sessionStore.saveAverageWearHours(it, response.averageDailyWearDisplay)
-                Log.i(TAG, "[STOP] Updated avg wear hours in SessionStore: $it, display: ${response.averageDailyWearDisplay}")
+            }
+
+            // 2. Restore Daily Breakdowns and individual sessions
+            var activeSessionFromBreakdown: com.example.bracesaligner.core.network.dto.TimerSessionResponse? = null
+            
+            response.dailyBreakdown?.forEach { breakdown ->
+                val date = try {
+                    java.time.LocalDate.parse(breakdown.calendarDate)
+                } catch (e: Exception) {
+                    Log.e(TAG, "[RESTORE] Failed to parse date: ${breakdown.calendarDate}")
+                    null
+                } ?: return@forEach
+
+                val breakdownEpochDay = date.toEpochDay()
+                
+                // Update the daily summary table (for historical progress/charts)
+                val existing = timerDao.getDailySummary(breakdownEpochDay)
+                val totalMinutesCalculated = (breakdown.nonWearHours * 60).toInt()
+                
+                timerDao.upsertDailySummary(
+                    DailyNonWearSummaryEntity(
+                        dateEpochDay = breakdownEpochDay,
+                        totalMinutes = totalMinutesCalculated,
+                        warningSent = existing?.warningSent ?: false,
+                        exceededSent = existing?.exceededSent ?: false
+                    )
+                )
+
+                // 3. Restore individual sessions
+                breakdown.sessions?.forEach { session ->
+                    // Use the device's local day calculation for consistency with the "Today" query
+                    val sessionDay = TimeUtils.epochDayFromMillis(session.startEpochMillis)
+                    
+                    timerDao.upsertSession(
+                        NonWearSessionEntity(
+                            sessionId = session.sessionId,
+                            alignerNumber = session.alignerNumber,
+                            startEpochMillis = session.startEpochMillis,
+                            endEpochMillis = session.endEpochMillis,
+                            dateEpochDay = sessionDay,
+                            synced = true
+                        )
+                    )
+
+                    // Identify if this is the active session
+                    if (session.endEpochMillis == null) {
+                        activeSessionFromBreakdown = session
+                    }
+                }
+            }
+
+            // 4. Handle active session restoration (priority: top-level, fallback: breakdown)
+            val activeToRestore = response.activeSession ?: activeSessionFromBreakdown
+            if (activeToRestore != null) {
+                timerDao.upsertSession(
+                    NonWearSessionEntity(
+                        sessionId = activeToRestore.sessionId,
+                        alignerNumber = activeToRestore.alignerNumber,
+                        startEpochMillis = activeToRestore.startEpochMillis,
+                        endEpochMillis = activeToRestore.endEpochMillis,
+                        dateEpochDay = TimeUtils.epochDayFromMillis(activeToRestore.startEpochMillis),
+                        synced = true
+                    )
+                )
+                Log.i(TAG, "[SUMMARY] Restored active session: ${activeToRestore.sessionId}")
+                scheduleNextAlarm(context)
+            } else {
+                // Final check: did we restore an active session from the DB?
+                if (timerDao.getActiveSession() != null) {
+                    Log.i(TAG, "[SUMMARY] Resuming active session from local DB")
+                    scheduleNextAlarm(context)
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "[STOP] Failed to fetch/store avg wear hours", e)
+            Log.e(TAG, "[SUMMARY] Failed to refresh summary", e)
         }
     }
 
@@ -159,14 +240,16 @@ class TimerRepository @Inject constructor(
             }
             Log.i(TAG, "[SYNC_PENDING] Found ${unsynced.size} unsynced session(s)")
 
+            val planId = planDao.getPlan()?.planId
             unsynced.forEach { session ->
                 Log.d(TAG, "[SYNC_PENDING] Syncing session=${session.sessionId}")
                 timerApi.syncSession(
                     TimerSessionRequest(
                         sessionId = session.sessionId,
+                        planId = planId,
                         alignerNumber = session.alignerNumber,
                         startEpochMillis = session.startEpochMillis,
-                        endEpochMillis = session.endEpochMillis
+                        endEpochMillis = session.endEpochMillis!!
                     )
                 )
             }
@@ -269,7 +352,7 @@ class TimerRepository @Inject constructor(
         // Calculate next milestone (every 5 mins)
         val now = System.currentTimeMillis()
         // Here we ideally find (now - start) % 5min and schedule the remainder.
-        // For testing, let's just do exactly 1 minute from now to verify it works quickly.
+        // We schedule the next check exactly 5 minutes from now.
         val triggerAt = now + (5 * 60 * 1000)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

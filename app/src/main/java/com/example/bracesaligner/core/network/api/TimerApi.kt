@@ -12,5 +12,8 @@ interface TimerApi {
     suspend fun syncSession(@Body body: TimerSessionRequest)
 
     @GET("api/non-wear-sessions/summary")
-    suspend fun getSummary(@Query("includeDaily") includeDaily: Boolean = false): DailySummaryResponse
+    suspend fun getSummary(
+        @Query("planId") planId: String? = null,
+        @Query("includeDaily") includeDaily: Boolean = false
+    ): DailySummaryResponse
 }
