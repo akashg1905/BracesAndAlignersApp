@@ -181,7 +181,7 @@ fun DashboardScreen(
                         .padding(horizontal = 20.dp, vertical = 24.dp)
                 ) {
                     Text(
-                        text = "Morning, ${state.userName}",
+                        text = "${state.greeting}, ${state.userName}",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1A1C1E)

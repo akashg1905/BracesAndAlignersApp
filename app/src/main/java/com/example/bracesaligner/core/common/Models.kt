@@ -10,8 +10,12 @@ data class AlignerPlan(
     val planId: String,
     val alignerCount: Int,
     val daysPerAligner: Int,
-    val startDateEpochDay: Long
-)
+    val startDateEpochDay: Long,
+    val planStatus: String? = null
+) {
+    val isExpired: Boolean
+        get() = planStatus.equals("expired", ignoreCase = true)
+}
 
 data class AlignerScheduleItem(
     val alignerNumber: Int,

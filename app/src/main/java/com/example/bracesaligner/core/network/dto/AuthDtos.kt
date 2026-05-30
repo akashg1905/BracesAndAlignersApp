@@ -16,6 +16,11 @@ data class OtpVerifyRequest(
     val otpCode: String
 )
 
+data class RefreshTokenRequest(
+    @SerializedName("refreshToken")
+    val refreshToken: String
+)
+
 data class AuthTokenResponse(
     @SerializedName("accessToken")
     val accessToken: String,

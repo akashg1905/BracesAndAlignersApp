@@ -33,7 +33,7 @@ class PlanViewModel @Inject constructor(
     }
 
     fun updateDaysPerAligner(value: Int) {
-        _uiState.update { it.copy(daysPerAligner = value.coerceIn(7, 10)) }
+        _uiState.update { it.copy(daysPerAligner = value.coerceIn(1, 99)) }
     }
 
     fun fetchSchedule() {

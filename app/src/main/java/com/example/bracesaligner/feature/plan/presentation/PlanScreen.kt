@@ -39,7 +39,7 @@ fun PlanSetupScreen(
         OutlinedTextField(
             value = state.daysPerAligner.toString(),
             onValueChange = { onDaysChange(it.toIntOrNull() ?: 7) },
-            label = { Text("Days per Aligner (7-10)") },
+            label = { Text("Days per Aligner (1-99)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))

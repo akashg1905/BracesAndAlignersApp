@@ -21,8 +21,8 @@
 ## API Design (High Level)
 - `POST /auth/register` -> send OTP (request body: `email`, `phone`)
 - `POST /auth/verify-otp` -> verify OTP and return token (see guide for JSON shape)
-- `POST /plan` -> create aligner plan
-- `GET /plan/active` -> fetch active plan
+- `POST /api/plan` -> create aligner plan
+- `GET /api/plan/active` -> fetch active plan: **404** = no plan row (app clears local plan); **200** with body including `plan_status` / `planStatus` = `"expired"` when the plan exists but today is after the last day (app shows “Plan finished”, not “no plan”).
 - `POST /timer/session` -> sync non-wear session start/stop
 - `POST /timer/daily-summary` -> sync daily non-wear totals
 

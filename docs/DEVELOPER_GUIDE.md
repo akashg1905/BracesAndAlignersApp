@@ -142,10 +142,12 @@ Wiring lives in [`navigation/AppNavHost.kt`](../app/src/main/java/com/example/br
 
 ### Dashboard (`Routes.DASHBOARD`)
 
-1. `DashboardViewModel` combines **plan** + **timer** flows (from repositories).  
-2. Shows current aligner info, progress, timer buttons.  
-3. If session is invalid / logged out, can navigate back to **Auth** (see `LaunchedEffect` in `AppNavHost`).  
-4. Buttons open **Plan setup**, **Timer detail**, **Scan**, **Profile** via `navController.navigate(...)`.
+1. On open, `DashboardViewModel` calls `PlanRepository.syncActivePlan()` so `GET /api/plan/active` stays in sync with the server.  
+2. **404** from that endpoint clears local plan + schedule (truly no plan).  
+3. **200** with `plan_status` / `planStatus` = `expired` keeps full plan data locally and shows **Plan finished** (not the same as “no plan”).  
+4. `DashboardViewModel` combines **plan** + **timer** flows for the main UI.  
+5. If session is invalid / logged out, can navigate back to **Auth** (see `LaunchedEffect` in `AppNavHost`).  
+6. Buttons open **Plan setup**, **Timer detail**, **Scan**, **Profile** via `navController.navigate(...)`.
 
 ### Plan setup (`Routes.PLAN_SETUP`)
 

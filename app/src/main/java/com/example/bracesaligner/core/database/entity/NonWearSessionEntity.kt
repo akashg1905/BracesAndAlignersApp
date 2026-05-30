@@ -10,5 +10,6 @@ data class NonWearSessionEntity(
     val startEpochMillis: Long,
     val endEpochMillis: Long?,
     val dateEpochDay: Long,
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    val lastNotificationMinutes: Int = 0
 )

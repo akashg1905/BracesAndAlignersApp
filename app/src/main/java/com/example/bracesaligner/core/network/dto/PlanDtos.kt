@@ -1,5 +1,7 @@
 package com.example.bracesaligner.core.network.dto
 
+import com.google.gson.annotations.SerializedName
+
 data class CreatePlanRequest(
     val alignerCount: Int,
     val daysPerAligner: Int,
@@ -10,7 +12,10 @@ data class AlignerPlanResponse(
     val planId: String,
     val alignerCount: Int,
     val daysPerAligner: Int,
-    val startDateEpochDay: Long
+    val startDateEpochDay: Long,
+    /** `"expired"` when plan exists but today is past the last day; omit or other value when active. */
+    @SerializedName(value = "plan_status", alternate = ["planStatus"])
+    val planStatus: String? = null
 )
 
 data class AlignerScheduleResponse(

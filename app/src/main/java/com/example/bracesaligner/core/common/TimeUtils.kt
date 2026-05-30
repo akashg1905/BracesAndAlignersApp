@@ -12,4 +12,13 @@ object TimeUtils {
     }
 
     fun todayEpochDay(): Long = LocalDate.now().toEpochDay()
+
+    fun getGreeting(): String {
+        val hour = java.time.LocalTime.now().hour
+        return when (hour) {
+            in 0..11 -> "Morning"
+            in 12..16 -> "Afternoon"
+            else -> "Evening"
+        }
+    }
 }

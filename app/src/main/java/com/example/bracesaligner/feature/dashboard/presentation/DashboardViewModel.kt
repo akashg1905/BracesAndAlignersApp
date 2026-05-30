@@ -28,6 +28,7 @@ import javax.inject.Inject
 import java.util.Locale
 
 data class DashboardUiState(
+    val greeting: String = "Hello",
     val userName: String = "Patient",
     val totalTransformationProgress: Int = 0,
     val currentAlignerNumber: Int = 0,
@@ -193,10 +194,12 @@ class DashboardViewModel @Inject constructor(
         val minutes = (totalMillis / (1000 * 60)) % 60
         val hours = (totalMillis / (1000 * 60 * 60))
         val formattedTime = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+        val greeting = TimeUtils.getGreeting()
 
         val isRefreshing = _uiState.value.isRefreshing
 
         if (plan == null) return DashboardUiState(
+            greeting = greeting,
             timerState = timer,
             planAvailable = false,
             isPlanExpired = false,
@@ -209,7 +212,8 @@ class DashboardViewModel @Inject constructor(
 
         if (plan.isExpired) {
             return DashboardUiState(
-                userName = "Sarah",
+                greeting = greeting,
+                userName = "Patient",
                 totalTransformationProgress = 100,
                 currentAlignerNumber = plan.alignerCount,
                 totalAligners = plan.alignerCount,
@@ -244,7 +248,8 @@ class DashboardViewModel @Inject constructor(
         val currentAlignerProgress = (daysPassedInAligner / totalDaysInAligner).coerceIn(0f, 1f)
 
         return DashboardUiState(
-            userName = "Sarah", // Hardcoded for now as per design
+            greeting = greeting,
+            userName = "Patient",
             totalTransformationProgress = (progress * 100).toInt(),
             currentAlignerNumber = active.alignerNumber,
             totalAligners = plan.alignerCount,

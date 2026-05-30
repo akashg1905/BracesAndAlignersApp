@@ -28,7 +28,8 @@ class PlanRepository @Inject constructor(
                 planId = it.planId,
                 alignerCount = it.alignerCount,
                 daysPerAligner = it.daysPerAligner,
-                startDateEpochDay = it.startDateEpochDay
+                startDateEpochDay = it.startDateEpochDay,
+                planStatus = it.planStatus
             )
         }
     }
@@ -41,13 +42,17 @@ class PlanRepository @Inject constructor(
                 startDateEpochDay = startEpochDay
             )
         )
+        // Clear old plan data to ensure the new one is picked up by the UI
+        planDao.clearAllPlansAndSchedules()
+        
         val entity = AlignerPlanEntity(
             planId = response.planId,
             userId = "me",
             alignerCount = response.alignerCount,
             daysPerAligner = response.daysPerAligner,
             startDateEpochDay = response.startDateEpochDay,
-            createdAtEpochMillis = TimeUtils.nowMillis()
+            createdAtEpochMillis = TimeUtils.nowMillis(),
+            planStatus = response.planStatus
         )
         planDao.upsertPlan(entity)
         val schedule = scheduleGenerator.generate(
@@ -70,37 +75,42 @@ class PlanRepository @Inject constructor(
     suspend fun syncActivePlan() {
         try {
             val response = planApi.getActivePlan()
-            if (response.isSuccessful) {
-                val body = response.body() ?: return
-                // If API returns a plan, save it locally and generate schedule
-                val entity = AlignerPlanEntity(
-                    planId = body.planId,
-                    userId = "me",
-                    alignerCount = body.alignerCount,
-                    daysPerAligner = body.daysPerAligner,
-                    startDateEpochDay = body.startDateEpochDay,
-                    createdAtEpochMillis = TimeUtils.nowMillis()
-                )
-                planDao.upsertPlan(entity)
-                
-                val schedule = scheduleGenerator.generate(
-                    alignerCount = entity.alignerCount,
-                    daysPerAligner = entity.daysPerAligner,
-                    startDateEpochDay = entity.startDateEpochDay
-                ).map {
-                    AlignerScheduleItemEntity(
-                        id = UUID.randomUUID().toString(),
-                        planId = entity.planId,
-                        alignerNumber = it.alignerNumber,
-                        startEpochDay = it.startEpochDay,
-                        endEpochDay = it.endEpochDay
-                    )
-                }
-                planDao.clearSchedule(entity.planId)
-                planDao.insertSchedule(schedule)
+            if (response.code() == 404) {
+                planDao.clearAllPlansAndSchedules()
+                return
             }
+            if (!response.isSuccessful) return
+            val body = response.body() ?: return
+            
+            // Clear old plan data before syncing the active one from server
+            planDao.clearAllPlansAndSchedules()
+
+            val entity = AlignerPlanEntity(
+                planId = body.planId,
+                userId = "me",
+                alignerCount = body.alignerCount,
+                daysPerAligner = body.daysPerAligner,
+                startDateEpochDay = body.startDateEpochDay,
+                createdAtEpochMillis = TimeUtils.nowMillis(), // Ensure this is fresh
+                planStatus = body.planStatus
+            )
+            planDao.upsertPlan(entity)
+            val schedule = scheduleGenerator.generate(
+                alignerCount = entity.alignerCount,
+                daysPerAligner = entity.daysPerAligner,
+                startDateEpochDay = entity.startDateEpochDay
+            ).map {
+                AlignerScheduleItemEntity(
+                    id = UUID.randomUUID().toString(),
+                    planId = entity.planId,
+                    alignerNumber = it.alignerNumber,
+                    startEpochDay = it.startEpochDay,
+                    endEpochDay = it.endEpochDay
+                )
+            }
+            planDao.clearSchedule(entity.planId)
+            planDao.insertSchedule(schedule)
         } catch (e: Exception) {
-            // Plan might not exist on backend, which is fine
             e.printStackTrace()
         }
     }

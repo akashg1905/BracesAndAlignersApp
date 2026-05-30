@@ -1,5 +1,10 @@
 package com.example.bracesaligner.feature.timer.data
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
 import com.example.bracesaligner.core.common.TimeUtils
 import com.example.bracesaligner.core.common.TimerState
@@ -15,8 +20,12 @@ import com.example.bracesaligner.core.network.dto.NotificationDispatchRequest
 import com.example.bracesaligner.core.network.dto.TimerSessionRequest
 import com.example.bracesaligner.feature.timer.domain.TimerThresholdEvaluator
 import com.example.bracesaligner.core.preferences.SessionStore
+import com.example.bracesaligner.feature.notifications.TimerAlarmReceiver
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,7 +36,8 @@ class TimerRepository @Inject constructor(
     private val planDao: AlignerPlanDao,
     private val timerApi: TimerApi,
     private val notificationApi: NotificationApi,
-    private val sessionStore: SessionStore
+    private val sessionStore: SessionStore,
+    @ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "TimerRepository"
@@ -36,6 +46,7 @@ class TimerRepository @Inject constructor(
     private val warningMinutes = 90
     private val limitMinutes = 120
     private val thresholdEvaluator = TimerThresholdEvaluator()
+    private val dispatchMutex = Mutex()
 
     fun observeTimerState(): Flow<TimerState> {
         val today = TimeUtils.todayEpochDay()
@@ -81,6 +92,7 @@ class TimerRepository @Inject constructor(
             )
         )
         Log.i(TAG, "[START] Session persisted successfully")
+        scheduleNextAlarm(context)
     }
 
     suspend fun stopTimer() {
@@ -92,6 +104,7 @@ class TimerRepository @Inject constructor(
         val now = TimeUtils.nowMillis()
         Log.i(TAG, "[STOP] Stopping session=${active.sessionId}, started=${active.startEpochMillis}, ended=$now")
         timerDao.stopSession(active.sessionId, now)
+        cancelAlarm(context)
         
         // Immediate sync of the session just finished
         try {
@@ -200,33 +213,103 @@ class TimerRepository @Inject constructor(
         }
 
         try {
-            val today = TimeUtils.todayEpochDay()
-            val finishedMillis = timerDao.getDayTotalMillis(today)
-            val totalNonWearMinutes = ((finishedMillis + elapsedMillis) / 60000).toInt()
+            dispatchMutex.withLock {
+                val today = TimeUtils.todayEpochDay()
+                val finishedMillis = timerDao.getDayTotalMillis(today)
+                val totalNonWearMinutes = ((finishedMillis + elapsedMillis) / 60000).toInt()
 
-            // 1. Update DB FIRST to "claim" this milestone and prevent double-dispatch
-            timerDao.updateLastNotification(activeSession.sessionId, nextInterval)
-            Log.d(TAG, "[DISPATCH_CHECK][$source] Updated lastNotificationMinutes=$nextInterval in DB (Pre-dispatch)")
-
-            Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatching /api/notifications/dispatch for milestone=$nextInterval. totalNonWearMinutes=$totalNonWearMinutes")
-            val code = "NF100"
-            
-            notificationApi.dispatchNotification(
-                listOf(
-                    NotificationDispatchRequest(
-                        code = code,
-                        nonWearTime = totalNonWearMinutes
+                Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatching /api/notifications/dispatch for milestone=$nextInterval. totalNonWearMinutes=$totalNonWearMinutes")
+                val code = "NF100"
+                
+                notificationApi.dispatchNotification(
+                    listOf(
+                        NotificationDispatchRequest(
+                            code = code,
+                            nonWearTime = totalNonWearMinutes
+                        )
                     )
                 )
-            )
-            
-            Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatch success for milestone=$nextInterval")
+                
+                // Update DB ONLY after successful API call
+                timerDao.updateLastNotification(activeSession.sessionId, nextInterval)
+                Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatch success for milestone=$nextInterval. DB updated.")
+            }
         } catch (e: Exception) {
             if (e is HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
                 Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch 422/Error: $errorBody")
             }
-            Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch FAILED for milestone=$nextInterval. Milestone remains marked as notified to avoid spam.", e)
+            Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch FAILED for milestone=$nextInterval. Will retry on next check.", e)
         }
+    }
+
+    fun scheduleNextAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        // We need to fetch the active session to know when the next 5-min milestone is
+        // Since this might be called from a non-suspend context or we want it simple:
+        // Ideally, this logic should be inside a coroutine or we use a simplified version.
+        // For simplicity in the repository, let's assume we want to check every 5 mins from start.
+        
+        // Better: Fetch active session from DB (blocking if needed or launch in scope)
+        // However, AlarmManager works best if we schedule the *next* milestone precisely.
+        
+        // For now, let's schedule a 5-minute recurring-like one-shot for precision.
+        val intent = Intent(context, TimerAlarmReceiver::class.java).apply {
+            action = TimerAlarmReceiver.ACTION_CHECK_TIMER
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 
+            0, 
+            intent, 
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Calculate next milestone (every 5 mins)
+        val now = System.currentTimeMillis()
+        // Here we ideally find (now - start) % 5min and schedule the remainder.
+        // For testing, let's just do exactly 1 minute from now to verify it works quickly.
+        val triggerAt = now + (5 * 60 * 1000)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAt,
+                    pendingIntent
+                )
+                Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
+            } else {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAt,
+                    pendingIntent
+                )
+                Log.d(TAG, "[ALARM] Scheduled inexact alarm (no permission) at $triggerAt")
+            }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAt,
+                pendingIntent
+            )
+            Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
+        }
+    }
+
+    fun cancelAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, TimerAlarmReceiver::class.java).apply {
+            action = TimerAlarmReceiver.ACTION_CHECK_TIMER
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 
+            0, 
+            intent, 
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+        Log.d(TAG, "[ALARM] Cancelled")
     }
 }

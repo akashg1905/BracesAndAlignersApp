@@ -4,7 +4,9 @@ import com.example.bracesaligner.BuildConfig
 import com.example.bracesaligner.core.database.AppDatabase
 import com.example.bracesaligner.core.network.api.AlignerPlanApi
 import com.example.bracesaligner.core.network.api.AuthApi
+import com.example.bracesaligner.core.network.api.NotificationApi
 import com.example.bracesaligner.core.network.api.TimerApi
+import com.example.bracesaligner.core.network.dto.RefreshTokenRequest
 import com.example.bracesaligner.core.preferences.SessionStore
 import dagger.Module
 import dagger.Provides
@@ -12,16 +14,27 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import okhttp3.Authenticator
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.Route
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Provider
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+    private suspend fun readAccessToken(sessionStore: SessionStore, database: AppDatabase): String? {
+        val fromStore = sessionStore.authToken.first()
+        if (!fromStore.isNullOrBlank()) return fromStore
+        return database.authSessionDao().getSession()?.accessToken?.takeIf { it.isNotBlank() }
+    }
+
     @Provides
     @Singleton
     fun provideAuthInterceptor(
@@ -32,35 +45,96 @@ object NetworkModule {
         val path = request.url.encodedPath
 
         // Skip adding Authorization header for auth-related endpoints
-        val isAuthPath = path.contains("/auth/register") || path.contains("/auth/verify-otp")
-        
-        val token = if (isAuthPath) null else runBlocking { sessionStore.authToken.first() }
-        
+        val isAuthPath = path.contains("/auth/register") ||
+            path.contains("/auth/verify-otp") ||
+            path.contains("/auth/refresh")
+
+        val token = if (isAuthPath) null else runBlocking { readAccessToken(sessionStore, database) }
+
         val newRequest = request.newBuilder().apply {
             if (!token.isNullOrBlank()) {
-                addHeader("Authorization", "Bearer $token")
+                header("Authorization", "Bearer $token")
             }
         }.build()
-        
-        val response = chain.proceed(newRequest)
 
-        // Handle 401 Unauthorized by clearing session and database
-        if (response.code == 401 && !isAuthPath) {
-            runBlocking {
-                database.clearAllTables()
-                sessionStore.clear()
-            }
-        }
-        
-        response
+        chain.proceed(newRequest)
     }
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
+    fun provideAuthenticator(
+        sessionStore: SessionStore,
+        authApiProvider: Provider<AuthApi>,
+        database: AppDatabase
+    ): Authenticator = object : Authenticator {
+        override fun authenticate(route: Route?, response: Response): Request? {
+            // Only try to refresh if the response was 401
+            if (response.code != 401) return null
+
+            // Avoid infinite loops if refreshing also fails with 401
+            if (response.request.url.encodedPath.contains("/auth/refresh")) {
+                runBlocking {
+                    database.clearAllTables()
+                    sessionStore.clear()
+                }
+                return null
+            }
+
+            synchronized(this) {
+                val currentToken = runBlocking { readAccessToken(sessionStore, database) }
+                val refreshToken = runBlocking { sessionStore.refreshToken.first() }
+
+                if (refreshToken.isNullOrBlank()) {
+                    // Many backends only issue an access token (no refresh). Do not wipe the session
+                    // on 401 — that looked like "login works then immediately fails" for /api/plan/active.
+                    return null
+                }
+
+                // If the token has already been updated by another thread, use it
+                val authHeader = response.request.header("Authorization")
+                if (authHeader != null && currentToken != null && authHeader != "Bearer $currentToken") {
+                    return response.request.newBuilder()
+                        .header("Authorization", "Bearer $currentToken")
+                        .build()
+                }
+
+                return try {
+                    val authApi = authApiProvider.get()
+                    val refreshResponse = runBlocking {
+                        authApi.refresh(RefreshTokenRequest(refreshToken))
+                    }
+
+                    runBlocking {
+                        sessionStore.saveToken(
+                            refreshResponse.accessToken,
+                            refreshResponse.refreshToken
+                        )
+                    }
+
+                    response.request.newBuilder()
+                        .header("Authorization", "Bearer ${refreshResponse.accessToken}")
+                        .build()
+                } catch (e: Exception) {
+                    runBlocking {
+                        database.clearAllTables()
+                        sessionStore.clear()
+                    }
+                    null
+                }
+            }
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        authInterceptor: Interceptor,
+        authenticator: Authenticator
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .authenticator(authenticator)
             .addInterceptor(logging)
             .build()
     }
@@ -87,4 +161,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideTimerApi(retrofit: Retrofit): TimerApi = retrofit.create(TimerApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi =
+        retrofit.create(NotificationApi::class.java)
 }

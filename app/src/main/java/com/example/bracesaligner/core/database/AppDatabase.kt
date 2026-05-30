@@ -19,7 +19,7 @@ import com.example.bracesaligner.core.database.entity.NonWearSessionEntity
         NonWearSessionEntity::class,
         DailyNonWearSummaryEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

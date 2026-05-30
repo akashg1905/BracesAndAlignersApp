@@ -10,11 +10,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NonWearTimerDao {
-    @Query("SELECT * FROM non_wear_session WHERE endEpochMillis IS NULL LIMIT 1")
+    @Query("SELECT * FROM non_wear_session WHERE (endEpochMillis IS NULL OR endEpochMillis <= 0) ORDER BY startEpochMillis DESC LIMIT 1")
     fun observeActiveSession(): Flow<NonWearSessionEntity?>
 
-    @Query("SELECT * FROM non_wear_session WHERE endEpochMillis IS NULL LIMIT 1")
+    @Query("SELECT * FROM non_wear_session WHERE (endEpochMillis IS NULL OR endEpochMillis <= 0) ORDER BY startEpochMillis DESC LIMIT 1")
     suspend fun getActiveSession(): NonWearSessionEntity?
+
+    @Query("SELECT * FROM non_wear_session ORDER BY startEpochMillis DESC")
+    suspend fun getAllSessions(): List<NonWearSessionEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSession(session: NonWearSessionEntity)
@@ -42,4 +45,7 @@ interface NonWearTimerDao {
 
     @Query("UPDATE non_wear_session SET synced = 1 WHERE sessionId IN (:sessionIds)")
     suspend fun markAsSynced(sessionIds: List<String>)
+
+    @Query("UPDATE non_wear_session SET lastNotificationMinutes = :minutes WHERE sessionId = :sessionId")
+    suspend fun updateLastNotification(sessionId: String, minutes: Int)
 }
