@@ -60,13 +60,26 @@ fun AppNavHost(navController: NavHostController) {
             val viewModel: PlanViewModel = hiltViewModel()
             val state = viewModel.uiState.collectAsStateWithLifecycle().value
             LaunchedEffect(state.saved) {
-                if (state.saved) navController.popBackStack()
+                if (state.saved) {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.PLAN_SETUP) { inclusive = true }
+                    }
+                }
             }
             PlanSetupScreen(
                 state = state,
                 onAlignerCountChange = viewModel::updateAlignerCount,
                 onDaysChange = viewModel::updateDaysPerAligner,
-                onSave = viewModel::createPlan
+                onStartDateChange = viewModel::updateStartDate,
+                onSave = viewModel::createPlan,
+                onBack = { navController.popBackStack() },
+                onNavigateToProgress = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                },
+                onNavigateToScan = { navController.navigate(Routes.SCAN) },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
         composable(Routes.DASHBOARD) {
@@ -94,10 +107,12 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
         composable(Routes.PROFILE) {
-            val viewModel: DashboardViewModel = hiltViewModel()
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
             ProfileScreen(
+                state = state,
                 onBack = { navController.popBackStack() },
-                onLogout = viewModel::logout,
+                onLogout = { /* Handle logout via a dedicated action or shared VM */ },
                 onNavigateToProfileDetails = { navController.navigate(Routes.EDIT_PROFILE) },
                 onNavigateToProgress = {
                     navController.navigate(Routes.DASHBOARD) {
@@ -112,43 +127,89 @@ fun AppNavHost(navController: NavHostController) {
         composable(Routes.EDIT_PROFILE) {
             val viewModel: ProfileViewModel = hiltViewModel()
             val state = viewModel.uiState.collectAsStateWithLifecycle().value
+
+            LaunchedEffect(Unit) {
+                viewModel.loadProfile()
+            }
+
             EditProfileScreen(
                 state = state,
                 onBack = { navController.popBackStack() },
                 onFirstNameChange = viewModel::updateFirstName,
                 onLastNameChange = viewModel::updateLastName,
                 onDobChange = viewModel::updateDob,
-                onSave = viewModel::saveProfile
+                onImageSelected = viewModel::updateProfileImage,
+                onSave = viewModel::saveProfile,
+                onClearMessages = viewModel::clearMessages,
+                onNavigateToProgress = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                },
+                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToScan = { navController.navigate(Routes.SCAN) }
             )
         }
         composable(Routes.SCHEDULE) {
             val viewModel: PlanViewModel = hiltViewModel()
             val state = viewModel.uiState.collectAsStateWithLifecycle().value
             
-            LaunchedEffect(Unit) {
-                viewModel.fetchSchedule()
-            }
-            
             ScheduleScreen(
-                items = state.scheduleItems,
-                onBack = { navController.popBackStack() }
+                state = state,
+                onBack = { navController.popBackStack() },
+                onIncrementDays = viewModel::incrementDaysForAligner,
+                onDecrementDays = viewModel::decrementDaysForAligner,
+                onUpdateSchedule = viewModel::updateSchedule,
+                onNavigateToProgress = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                },
+                onNavigateToScan = { navController.navigate(Routes.SCAN) },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
         composable(Routes.SCAN) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
+            
+            LaunchedEffect(Unit) {
+                viewModel.loadProfile()
+            }
+
             WeeklyScanScreen(
+                profileImageUrl = state.profileImage,
                 onBack = { navController.popBackStack() },
-                onStartScan = { /* TODO: Launch AI scanning experience */ }
+                onStartScan = { /* TODO: Launch AI scanning experience */ },
+                onNavigateToProgress = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                },
+                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
         composable(Routes.TIMER_DETAIL) {
             val viewModel: TimerViewModel = hiltViewModel()
             val state = viewModel.timerState.collectAsStateWithLifecycle().value
             val weekly = viewModel.weeklySummary.collectAsStateWithLifecycle().value
+            val profileImageUrl = viewModel.profileImageUrl.collectAsStateWithLifecycle().value
             TimerDetailScreen(
                 state = state,
+                profileImageUrl = profileImageUrl,
                 weeklySummary = weekly,
                 onStart = viewModel::startTimer,
-                onStop = viewModel::stopTimer
+                onStop = viewModel::stopTimer,
+                onBack = { navController.popBackStack() },
+                onNavigateToProgress = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                },
+                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToScan = { navController.navigate(Routes.SCAN) },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
     }

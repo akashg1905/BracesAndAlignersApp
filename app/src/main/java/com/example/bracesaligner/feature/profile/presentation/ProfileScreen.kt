@@ -2,6 +2,7 @@ package com.example.bracesaligner.feature.profile.presentation
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -23,12 +24,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bracesaligner.R
+import com.example.bracesaligner.ui.theme.AlignerBlack
 import com.example.bracesaligner.ui.theme.AlignerGreen
 import com.example.bracesaligner.ui.theme.AlignerTextGrey
+import com.example.bracesaligner.ui.theme.AlignerWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    state: ProfileUiState,
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToProfileDetails: () -> Unit,
@@ -63,12 +67,20 @@ fun ProfileScreen(
                             .padding(end = 16.dp)
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.LightGray)
+                            .background(AlignerWhite)
+                            .border(1.dp, AlignerGreen, CircleShape)
+                            .clickable { onNavigateToProfileDetails() },
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Placeholder for top-right small profile image
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = AlignerGreen,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AlignerWhite)
             )
         },
         bottomBar = {
@@ -77,7 +89,8 @@ fun ProfileScreen(
                 onNavigateToPlan = onNavigateToPlan,
                 onNavigateToScan = onNavigateToScan
             )
-        }
+        },
+        containerColor = AlignerWhite
     ) { padding ->
         Column(
             modifier = Modifier
@@ -94,23 +107,23 @@ fun ProfileScreen(
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
-                        .background(AlignerGreen.copy(alpha = 0.1f))
-                        .padding(4.dp)
+                        .background(AlignerWhite)
+                        .border(2.dp, AlignerGreen, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(Color.LightGray)
-                    ) {
-                         // Actual Image would go here
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile Picture",
+                        tint = AlignerGreen,
+                        modifier = Modifier.size(80.dp)
+                    )
                 }
                 Box(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
                         .background(AlignerGreen)
+                        .border(2.dp, AlignerWhite, CircleShape)
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -162,7 +175,7 @@ fun ProfileScreen(
             TextButton(onClick = onLogout) {
                 Text(
                     "Log Out",
-                    color = Color(0xFFB03939),
+                    color = Color(0xFFD32F2F),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
@@ -216,7 +229,7 @@ fun ProfileMenuItem(
                 modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
-                color = Color(0xFF1A1C1E)
+                color = AlignerBlack
             )
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -234,7 +247,7 @@ fun ProfileBottomNavBar(
     onNavigateToScan: () -> Unit
 ) {
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = AlignerWhite,
         tonalElevation = 8.dp
     ) {
         NavigationBarItem(
@@ -244,7 +257,9 @@ fun ProfileBottomNavBar(
             label = { Text("PROGRESS") },
             colors = NavigationBarItemDefaults.colors(
                 unselectedIconColor = AlignerTextGrey,
-                unselectedTextColor = AlignerTextGrey
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
             )
         )
         NavigationBarItem(
@@ -252,14 +267,24 @@ fun ProfileBottomNavBar(
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
             label = { Text("PLAN") },
-            colors = NavigationBarItemDefaults.colors(unselectedIconColor = AlignerTextGrey, unselectedTextColor = AlignerTextGrey)
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
         )
         NavigationBarItem(
             selected = false,
             onClick = onNavigateToScan,
             icon = { Icon(Icons.Default.Search, contentDescription = null) },
             label = { Text("SCAN") },
-            colors = NavigationBarItemDefaults.colors(unselectedIconColor = AlignerTextGrey, unselectedTextColor = AlignerTextGrey)
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
         )
         NavigationBarItem(
             selected = true,
@@ -267,7 +292,7 @@ fun ProfileBottomNavBar(
             icon = { Icon(Icons.Default.Person, contentDescription = null) },
             label = { Text("PROFILE") },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Color.White,
+                selectedIconColor = AlignerWhite,
                 selectedTextColor = AlignerGreen,
                 indicatorColor = AlignerGreen,
                 unselectedIconColor = AlignerTextGrey,

@@ -16,7 +16,9 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "API_BASE_URL", "\"http://192.168.31.91:8000/\"")
+
+        val apiUrl = project.findProperty("API_BASE_URL") ?: "http://10.0.2.2:8000/"
+        buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
     }
 
     buildFeatures {
@@ -31,6 +33,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 }
 
@@ -39,6 +42,7 @@ kotlin {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -46,6 +50,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.icons.extended)
     implementation(libs.android.material)
+    implementation(libs.coil.compose)
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

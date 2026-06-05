@@ -10,11 +10,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.bracesaligner.feature.plan.data.PlanRepository
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val planRepository: PlanRepository
 ) : ViewModel() {
     private val _destination = MutableStateFlow<String?>(null)
     val destination: StateFlow<String?> = _destination.asStateFlow()
@@ -22,8 +25,24 @@ class SplashViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             delay(1200)
-            authRepository.observeLoggedIn().collect { isLoggedIn ->
-                _destination.value = if (isLoggedIn) Routes.DASHBOARD else Routes.AUTH
+            val isLoggedIn = authRepository.observeLoggedIn().first()
+            if (isLoggedIn) {
+                try {
+                    // Sync the latest plan state from backend
+                    planRepository.syncActivePlan()
+                    val plan = planRepository.observePlan().first()
+                    
+                    if (plan == null) {
+                        _destination.value = Routes.PLAN_SETUP
+                    } else {
+                        _destination.value = Routes.DASHBOARD
+                    }
+                } catch (e: Exception) {
+                    // Fallback to Dashboard if sync fails, it will handle no-plan state
+                    _destination.value = Routes.DASHBOARD
+                }
+            } else {
+                _destination.value = Routes.AUTH
             }
         }
     }

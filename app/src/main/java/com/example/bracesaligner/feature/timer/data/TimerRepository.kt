@@ -15,7 +15,6 @@ import com.example.bracesaligner.core.database.entity.NonWearSessionEntity
 import com.example.bracesaligner.core.network.api.NotificationApi
 import com.example.bracesaligner.core.network.api.TimerApi
 import retrofit2.HttpException
-import com.example.bracesaligner.core.network.dto.DailySummaryRequest
 import com.example.bracesaligner.core.network.dto.NotificationDispatchRequest
 import com.example.bracesaligner.core.network.dto.TimerSessionRequest
 import com.example.bracesaligner.core.network.dto.TimerSessionResponse
@@ -38,16 +37,18 @@ class TimerRepository @Inject constructor(
     private val timerApi: TimerApi,
     private val notificationApi: NotificationApi,
     private val sessionStore: SessionStore,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     companion object {
         private const val TAG = "TimerRepository"
+        private const val REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes
     }
 
     private val warningMinutes = 90
     private val limitMinutes = 120
     private val thresholdEvaluator = TimerThresholdEvaluator()
     private val dispatchMutex = Mutex()
+    private var lastRefreshTime = 0L
 
     fun observeTimerState(): Flow<TimerState> {
         val today = TimeUtils.todayEpochDay()
@@ -144,11 +145,17 @@ class TimerRepository @Inject constructor(
         refreshSummary()
     }
 
-    suspend fun refreshSummary() {
+    suspend fun refreshSummary(force: Boolean = false) {
+        if (!force && TimeUtils.nowMillis() - lastRefreshTime < REFRESH_THRESHOLD) {
+            Log.d(TAG, "[SUMMARY] Skipping refresh, last sync was recent")
+            return
+        }
         try {
             val planId = planDao.getPlan()?.planId
             Log.d(TAG, "[SUMMARY] Fetching summary for state restoration, planId=$planId")
             val response = timerApi.getSummary(planId = planId, includeDaily = true)
+            
+            lastRefreshTime = TimeUtils.nowMillis()
             
             // 1. Update Average Wear Hours in SessionStore
             response.averageDailyWearHours?.let {
@@ -156,17 +163,17 @@ class TimerRepository @Inject constructor(
             }
 
             // 2. Restore Daily Breakdowns and individual sessions
-            var activeSessionFromBreakdown: com.example.bracesaligner.core.network.dto.TimerSessionResponse? = null
+            var activeSessionFromBreakdown: TimerSessionResponse? = null
             
             response.dailyBreakdown?.forEach { breakdown ->
-                val date = try {
-                    java.time.LocalDate.parse(breakdown.calendarDate)
-                } catch (e: Exception) {
+                val breakdownEpochDay = try {
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    val date = sdf.parse(breakdown.calendarDate)
+                    if (date != null) TimeUtils.epochDayFromMillis(date.time) else null
+                } catch (_: Exception) {
                     Log.e(TAG, "[RESTORE] Failed to parse date: ${breakdown.calendarDate}")
                     null
                 } ?: return@forEach
-
-                val breakdownEpochDay = date.toEpochDay()
                 
                 // Update the daily summary table (for historical progress/charts)
                 val existing = timerDao.getDailySummary(breakdownEpochDay)
@@ -282,8 +289,8 @@ class TimerRepository @Inject constructor(
         val elapsedMinutes = (elapsedMillis / 60000).toInt()
         Log.i(TAG, "[DISPATCH_CHECK][$source] session=${activeSession.sessionId} elapsedMin=$elapsedMinutes lastNotifiedMin=${activeSession.lastNotificationMinutes}")
 
-        // Milestones every 5 minutes
-        val intervals = (1..288).map { it * 5 }
+        // Milestones: 30m, 1h, 1.5h, 2h, 2.5h, 3h, etc.
+        val intervals = listOf(30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480)
         
         // Find the highest milestone we have crossed but haven't notified for yet
         val nextInterval = intervals.lastOrNull { 
@@ -297,6 +304,13 @@ class TimerRepository @Inject constructor(
 
         try {
             dispatchMutex.withLock {
+                // Re-fetch to ensure we have the most up-to-date 'lastNotificationMinutes'
+                val latestSession = timerDao.getActiveSession() ?: return
+                if (latestSession.lastNotificationMinutes >= nextInterval) {
+                    Log.d(TAG, "[DISPATCH_CHECK][$source] Already notified for $nextInterval. Skipping.")
+                    return
+                }
+
                 val today = TimeUtils.todayEpochDay()
                 val finishedMillis = timerDao.getDayTotalMillis(today)
                 val totalNonWearMinutes = ((finishedMillis + elapsedMillis) / 60000).toInt()
@@ -329,15 +343,7 @@ class TimerRepository @Inject constructor(
     fun scheduleNextAlarm(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         
-        // We need to fetch the active session to know when the next 5-min milestone is
-        // Since this might be called from a non-suspend context or we want it simple:
-        // Ideally, this logic should be inside a coroutine or we use a simplified version.
-        // For simplicity in the repository, let's assume we want to check every 5 mins from start.
-        
-        // Better: Fetch active session from DB (blocking if needed or launch in scope)
-        // However, AlarmManager works best if we schedule the *next* milestone precisely.
-        
-        // For now, let's schedule a 5-minute recurring-like one-shot for precision.
+        // We schedule the next check exactly 5 minutes from now.
         val intent = Intent(context, TimerAlarmReceiver::class.java).apply {
             action = TimerAlarmReceiver.ACTION_CHECK_TIMER
         }
@@ -349,35 +355,42 @@ class TimerRepository @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Calculate next milestone (every 5 mins)
         val now = System.currentTimeMillis()
-        // Here we ideally find (now - start) % 5min and schedule the remainder.
-        // We schedule the next check exactly 5 minutes from now.
         val triggerAt = now + (5 * 60 * 1000)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAt,
+                        pendingIntent
+                    )
+                    Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
+                } else {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAt,
+                        pendingIntent
+                    )
+                    Log.d(TAG, "[ALARM] Scheduled inexact alarm at $triggerAt")
+                }
+            } else {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerAt,
                     pendingIntent
                 )
                 Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
-            } else {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAt,
-                    pendingIntent
-                )
-                Log.d(TAG, "[ALARM] Scheduled inexact alarm (no permission) at $triggerAt")
             }
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(
+        } catch (e: Exception) {
+            Log.e(TAG, "[ALARM] Failed to schedule alarm", e)
+            // Fallback for safety
+            alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAt,
                 pendingIntent
             )
-            Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
         }
     }
 

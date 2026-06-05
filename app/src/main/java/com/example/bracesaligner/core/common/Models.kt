@@ -18,7 +18,9 @@ data class AlignerPlan(
 }
 
 data class AlignerScheduleItem(
+    val id: String = "",
     val alignerNumber: Int,
+    val daysForAligner: Int = 0,
     val startEpochDay: Long,
     val endEpochDay: Long,
     val isCurrent: Boolean = false,

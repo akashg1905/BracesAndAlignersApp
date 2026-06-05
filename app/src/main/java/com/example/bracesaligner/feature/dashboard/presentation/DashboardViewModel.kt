@@ -4,12 +4,13 @@ import android.util.Log
 import com.example.bracesaligner.core.preferences.SessionStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.bracesaligner.core.common.AlignerScheduleItem
 import com.example.bracesaligner.core.common.AlignerPlan
 import com.example.bracesaligner.core.common.TimeUtils
 import com.example.bracesaligner.core.common.TimerState
 import com.example.bracesaligner.feature.plan.data.PlanRepository
-import com.example.bracesaligner.feature.plan.domain.ScheduleGenerator
 import com.example.bracesaligner.feature.timer.data.TimerRepository
+import com.example.bracesaligner.feature.profile.data.UserRepository
 import com.example.bracesaligner.feature.auth.data.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,6 +32,7 @@ import java.util.Locale
 data class DashboardUiState(
     val greeting: String = "Hello",
     val userName: String = "Patient",
+    val profileImageUrl: String? = null,
     val totalTransformationProgress: Int = 0,
     val currentAlignerNumber: Int = 0,
     val totalAligners: Int = 0,
@@ -55,8 +58,8 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val planRepository: PlanRepository,
     private val timerRepository: TimerRepository,
-    private val scheduleGenerator: ScheduleGenerator,
     private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val sessionStore: SessionStore
 ) : ViewModel() {
     companion object {
@@ -77,35 +80,55 @@ class DashboardViewModel @Inject constructor(
     ) { plan, timerState, isLoggedIn, avgWear, avgWearDisplay ->
         Quintuple(plan, timerState, isLoggedIn, avgWear, avgWearDisplay)
     }.flatMapLatest { (plan, timerState, isLoggedIn, avgWear, avgWearDisplay) ->
-        if (timerState.isRunning) {
-            flow {
-                while (true) {
-                    emit(buildDashboardState(plan, timerState, isLoggedIn, avgWear, avgWearDisplay))
-                    delay(1000)
-                }
-            }
+        val scheduleFlow = if (plan != null) {
+            planRepository.observeSchedule(plan.planId)
         } else {
-            flow {
-                emit(buildDashboardState(plan, timerState, isLoggedIn, avgWear, avgWearDisplay))
+            flow { emit(emptyList<AlignerScheduleItem>()) }
+        }
+
+        scheduleFlow.flatMapLatest { schedule ->
+            if (timerState.isRunning) {
+                flow {
+                    while (true) {
+                        emit(buildDashboardState(plan, schedule, timerState, isLoggedIn, avgWear, avgWearDisplay))
+                        delay(1000)
+                    }
+                }
+            } else {
+                flow {
+                    emit(buildDashboardState(plan, schedule, timerState, isLoggedIn, avgWear, avgWearDisplay))
+                }
             }
         }
     }
 
     init {
         viewModelScope.launch {
-            Log.d(TAG, "[INIT] Syncing active plan and summary from backend")
-            planRepository.syncActivePlan()
-            // Fetch summary if plan is available (check after sync)
-            if (planRepository.observePlan().first() != null) {
+            val existingPlan = planRepository.observePlan().first()
+            
+            // Only sync from network if we don't have a plan or if it's the first load of the session
+            if (existingPlan == null) {
+                Log.d(TAG, "[INIT] No local plan found, syncing from backend")
+                planRepository.syncActivePlan()
+            }
+
+            // Only refresh summary if we have a plan
+            val plan = planRepository.observePlan().first()
+            if (plan != null) {
                 timerRepository.refreshSummary()
             }
             Log.d(TAG, "[INIT] Sync finished")
         }
         viewModelScope.launch {
-            dashboardFlow.collect {
-                _uiState.value = it
-                Log.v(TAG, "[STATE] timerRunning=${it.timerState.isRunning} planAvailable=${it.planAvailable} expired=${it.isPlanExpired}")
-                updateNotificationMonitor(it.timerState.isRunning)
+            dashboardFlow.collect { updatedState ->
+                _uiState.update { current ->
+                    updatedState.copy(
+                        userName = current.userName,
+                        profileImageUrl = current.profileImageUrl
+                    )
+                }
+                Log.v(TAG, "[STATE] timerRunning=${updatedState.timerState.isRunning} planAvailable=${updatedState.planAvailable} expired=${updatedState.isPlanExpired}")
+                updateNotificationMonitor(updatedState.timerState.isRunning)
             }
         }
     }
@@ -137,22 +160,16 @@ class DashboardViewModel @Inject constructor(
 
     private fun updateNotificationMonitor(isRunning: Boolean) {
         if (isRunning) {
-            if (notificationMonitorJob?.isActive == true) {
-                Log.v(TAG, "[FG_MONITOR] Already active")
-                return
-            }
-            Log.i(TAG, "[FG_MONITOR] Starting foreground monitor loop")
+            if (notificationMonitorJob?.isActive == true) return
+            
+            // Instead of a loop, we just do a one-time "catch up" check 
+            // when the UI becomes active or timer starts.
             notificationMonitorJob = viewModelScope.launch {
-                while (true) {
-                    runCatching { timerRepository.checkAndDispatchNonWearNotifications(source = "foreground_monitor") }
-                        .onFailure { Log.e(TAG, "[FG_MONITOR] checkAndDispatch failed", it) }
-                    val delayMs = computeAdaptiveCheckDelayMillis()
-                    Log.v(TAG, "[FG_MONITOR] Next check in ${delayMs}ms")
-                    delay(delayMs)
-                }
+                runCatching { 
+                    timerRepository.checkAndDispatchNonWearNotifications(source = "foreground_entry") 
+                }.onFailure { Log.e(TAG, "[FG_CHECK] failed", it) }
             }
         } else {
-            Log.i(TAG, "[FG_MONITOR] Stopping foreground monitor loop")
             notificationMonitorJob?.cancel()
             notificationMonitorJob = null
         }
@@ -186,6 +203,7 @@ class DashboardViewModel @Inject constructor(
 
     private fun buildDashboardState(
         plan: AlignerPlan?,
+        schedule: List<AlignerScheduleItem>,
         timer: TimerState,
         isLoggedIn: Boolean,
         avgWear: Double,
@@ -242,9 +260,12 @@ class DashboardViewModel @Inject constructor(
             )
         }
 
-        val schedule = scheduleGenerator.generate(plan.alignerCount, plan.daysPerAligner, plan.startDateEpochDay)
+        // Use the server-driven schedule to determine active aligner
         val today = TimeUtils.todayEpochDay()
-        val active = schedule.firstOrNull { today in it.startEpochDay..it.endEpochDay } ?: schedule.last()
+        val active = schedule.find { it.isCurrent } 
+            ?: schedule.firstOrNull { today in it.startEpochDay..it.endEpochDay } 
+            ?: schedule.lastOrNull()
+            ?: return DashboardUiState(greeting = greeting, planAvailable = true, isLoggedIn = isLoggedIn)
         
         val daysLeft = (active.endEpochDay - today).toInt().coerceAtLeast(0)
         val progress = (active.alignerNumber.toFloat() / plan.alignerCount.toFloat()).coerceIn(0f, 1f)
@@ -252,7 +273,9 @@ class DashboardViewModel @Inject constructor(
         // Progress within the current aligner
         val totalDaysInAligner = (active.endEpochDay - active.startEpochDay + 1).toFloat()
         val daysPassedInAligner = (today - active.startEpochDay).toFloat()
-        val currentAlignerProgress = (daysPassedInAligner / totalDaysInAligner).coerceIn(0f, 1f)
+        val currentAlignerProgress = if (totalDaysInAligner > 0) {
+            (daysPassedInAligner / totalDaysInAligner).coerceIn(0f, 1f)
+        } else 0f
 
         return DashboardUiState(
             greeting = greeting,

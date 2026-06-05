@@ -60,9 +60,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bracesaligner.ui.theme.AlignerBlack
 import com.example.bracesaligner.ui.theme.AlignerGreen
 import com.example.bracesaligner.ui.theme.AlignerLightBg
+import com.example.bracesaligner.ui.theme.AlignerOffWhite
+import com.example.bracesaligner.ui.theme.AlignerRed
 import com.example.bracesaligner.ui.theme.AlignerTextGrey
+import com.example.bracesaligner.ui.theme.AlignerWhite
 
 @Composable
 fun SplashScreen() {
@@ -77,7 +81,7 @@ fun SplashScreen() {
             .fillMaxSize()
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(Color(0xFFF8FBFC), Color.White)
+                    colors = listOf(AlignerOffWhite, AlignerWhite)
                 )
             ),
         contentAlignment = Alignment.Center
@@ -94,7 +98,7 @@ fun SplashScreen() {
                 modifier = Modifier
                     .size(100.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White, RoundedCornerShape(24.dp))
+                    .background(AlignerWhite, RoundedCornerShape(24.dp))
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -181,7 +185,7 @@ fun AuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(AlignerWhite)
             .verticalScroll(rememberScrollState())
     ) {
         // Hero Section with Image Placeholder
@@ -191,7 +195,7 @@ fun AuthScreen(
                 .height(300.dp)
                 .background(
                     brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(AlignerLightBg, Color.White)
+                        colors = listOf(AlignerLightBg, AlignerWhite)
                     )
                 )
         ) {
@@ -229,7 +233,7 @@ fun AuthScreen(
                     fontSize = 44.sp,
                     lineHeight = 48.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF1A1C1E)
+                    color = AlignerBlack
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -262,7 +266,7 @@ fun AuthScreen(
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp, bottom = 32.dp),
-                color = Color(0xFF1A1C1E)
+                color = AlignerBlack
             )
 
             // Phone Number Input
@@ -333,7 +337,12 @@ fun AuthScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = char, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = char,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AlignerBlack
+                            )
                         }
                     }
                 }
@@ -379,7 +388,7 @@ fun AuthScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
                 if (state.loading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = AlignerWhite, modifier = Modifier.size(24.dp))
                 } else {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -430,7 +439,7 @@ fun AuthScreen(
             state.error?.let {
                 Text(
                     text = it,
-                    color = Color.Red,
+                    color = AlignerRed,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -475,6 +484,8 @@ fun CustomTextField(
             disabledContainerColor = AlignerLightBg,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
+            focusedTextColor = AlignerBlack,
+            unfocusedTextColor = AlignerBlack
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         singleLine = true

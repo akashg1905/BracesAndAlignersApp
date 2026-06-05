@@ -14,7 +14,9 @@ data class UserProfileResponse(
     @SerializedName("lastName")
     val lastName: String?,
     @SerializedName("dateOfBirth")
-    val dateOfBirth: String?
+    val dateOfBirth: String?,
+    @SerializedName("profileImage")
+    val profileImage: String? = null
 )
 
 data class UpdateProfileRequest(
@@ -23,5 +25,7 @@ data class UpdateProfileRequest(
     @SerializedName("lastName")
     val lastName: String?,
     @SerializedName("dateOfBirth")
-    val dateOfBirth: String?
+    val dateOfBirth: String?,
+    @SerializedName("profileImage")
+    val profileImage: String? = null
 )

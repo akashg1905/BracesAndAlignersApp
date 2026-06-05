@@ -30,13 +30,10 @@ class TimerCheckWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Log.d(TAG, "[WORKER] Started periodic check")
         try {
-            // 1. Check for non-wear intervals and dispatch notifications if needed
-            timerRepository.checkAndDispatchNonWearNotifications(source = "background_worker")
-
-            // 2. Sync pending sessions to backend
+            // 1. Sync pending sessions to backend
             timerRepository.syncPendingSessions()
 
-            // 3. Send daily reminder notification only once per day, preferably in the evening (after 8 PM)
+            // 2. Send daily reminder notification only once per day
             val today = TimeUtils.todayEpochDay()
             val lastDaily = sessionStore.lastDailyReminderDay.first()
             val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
@@ -48,8 +45,8 @@ class TimerCheckWorker @AssistedInject constructor(
                     context = applicationContext,
                     id = 2001,
                     channel = NotificationHelper.CHANNEL_REMINDER,
-                    title = "BracesAndAligner",
-                    body = "Daily summary: open app to review your non-wear time."
+                    title = "Braces & Aligner",
+                    body = "Daily summary: Open app to review your non-wear time."
                 )
                 sessionStore.saveLastDailyReminderDay(today)
             } else {

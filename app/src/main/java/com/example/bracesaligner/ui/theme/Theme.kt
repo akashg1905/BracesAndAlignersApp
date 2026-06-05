@@ -8,18 +8,25 @@ import androidx.compose.runtime.Composable
 
 import androidx.compose.ui.graphics.Color
 
-val AlignerGreen = Color(0xFF005B4B)
-val AlignerLightBg = Color(0xFFE1E8ED)
-val AlignerTextGrey = Color(0xFF637378)
-
 private val LightColors = lightColorScheme(
     primary = AlignerGreen,
-    onPrimary = Color.White,
-    surface = Color.White,
-    onSurface = Color.Black,
-    secondary = AlignerTextGrey
+    onPrimary = AlignerWhite,
+    surface = AlignerWhite,
+    onSurface = AlignerBlack,
+    secondary = AlignerTextGrey,
+    background = AlignerWhite,
+    onBackground = AlignerBlack
 )
-private val DarkColors = darkColorScheme()
+private val DarkColors = darkColorScheme(
+    primary = AlignerGreen,
+    onPrimary = AlignerWhite,
+    surface = AlignerBlack,
+    onSurface = AlignerWhite,
+    secondary = AlignerTextGrey,
+    tertiary = AlignerGreen,
+    background = AlignerBlack,
+    onBackground = AlignerWhite
+)
 
 @Composable
 fun BracesAndAlignerTheme(

@@ -28,9 +28,20 @@ data class AlignerScheduleResponse(
 data class AlignerScheduleItemDto(
     val alignerId: String,
     val alignerNumber: Int,
+    val daysForAligner: Int = 0,
     val startDateEpochDay: Long,
     val endDateEpochDay: Long,
     val startDate: String,
     val endDate: String,
     val isCurrent: Boolean
+)
+
+data class UpdateAlignerRequest(
+    val alignerId: String,
+    val daysForAligner: Int
+)
+
+data class UpdatePlanScheduleRequest(
+    val planId: String? = null,
+    val updates: List<UpdateAlignerRequest>
 )

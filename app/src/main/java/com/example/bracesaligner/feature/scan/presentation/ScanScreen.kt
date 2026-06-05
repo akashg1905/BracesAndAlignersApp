@@ -8,6 +8,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,25 +24,76 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.example.bracesaligner.ui.theme.AlignerBlack
 import com.example.bracesaligner.ui.theme.AlignerGreen
+import com.example.bracesaligner.ui.theme.AlignerOffWhite
 import com.example.bracesaligner.ui.theme.AlignerTextGrey
+import com.example.bracesaligner.ui.theme.AlignerWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyScanScreen(
+    profileImageUrl: String? = null,
     onBack: () -> Unit,
-    onStartScan: () -> Unit
+    onStartScan: () -> Unit,
+    onNavigateToProgress: () -> Unit = {},
+    onNavigateToPlan: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Weekly Scan", fontWeight = FontWeight.Bold) },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Clinical Sanctuary",
+                        color = AlignerGreen,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AlignerGreen)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                actions = {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(AlignerWhite)
+                            .border(1.dp, AlignerGreen, CircleShape)
+                            .clickable { onNavigateToProfile() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (profileImageUrl != null) {
+                            AsyncImage(
+                                model = profileImageUrl,
+                                contentDescription = "Profile",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = AlignerGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AlignerWhite)
+            )
+        },
+        bottomBar = {
+            ScanBottomNavBar(
+                onNavigateToProgress = onNavigateToProgress,
+                onNavigateToPlan = onNavigateToPlan,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     ) { padding ->
@@ -43,7 +101,7 @@ fun WeeklyScanScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF8F9FA))
+                .background(AlignerOffWhite)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -70,7 +128,7 @@ fun WeeklyScanScreen(
                 "Time for your scan!",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A1C1E)
+                color = AlignerBlack
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -135,12 +193,74 @@ fun ScanGuidelineItem(number: String, title: String, description: String) {
                 .background(AlignerGreen),
             contentAlignment = Alignment.Center
         ) {
-            Text(number, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(number, color = AlignerWhite, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AlignerBlack)
             Text(description, color = AlignerTextGrey, fontSize = 14.sp, lineHeight = 20.sp)
         }
+    }
+}
+
+@Composable
+fun ScanBottomNavBar(
+    onNavigateToProgress: () -> Unit,
+    onNavigateToPlan: () -> Unit,
+    onNavigateToProfile: () -> Unit
+) {
+    NavigationBar(
+        containerColor = AlignerWhite,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            selected = false,
+            onClick = onNavigateToProgress,
+            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+            label = { Text("PROGRESS") },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
+        )
+        NavigationBarItem(
+            selected = false,
+            onClick = onNavigateToPlan,
+            icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+            label = { Text("PLAN") },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
+        )
+        NavigationBarItem(
+            selected = true,
+            onClick = { },
+            icon = { Icon(Icons.Default.Search, contentDescription = null) },
+            label = { Text("SCAN") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = AlignerWhite,
+                selectedTextColor = AlignerGreen,
+                indicatorColor = AlignerGreen,
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey
+            )
+        )
+        NavigationBarItem(
+            selected = false,
+            onClick = onNavigateToProfile,
+            icon = { Icon(Icons.Default.Person, contentDescription = null) },
+            label = { Text("PROFILE") },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
+        )
     }
 }

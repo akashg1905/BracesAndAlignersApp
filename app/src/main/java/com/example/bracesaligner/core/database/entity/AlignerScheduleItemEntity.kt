@@ -8,6 +8,10 @@ data class AlignerScheduleItemEntity(
     @PrimaryKey val id: String,
     val planId: String,
     val alignerNumber: Int,
+    val daysForAligner: Int = 0,
     val startEpochDay: Long,
-    val endEpochDay: Long
+    val endEpochDay: Long,
+    val startDate: String,
+    val endDate: String,
+    val isCurrent: Boolean
 )

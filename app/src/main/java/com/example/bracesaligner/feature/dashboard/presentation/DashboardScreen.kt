@@ -1,6 +1,8 @@
 package com.example.bracesaligner.feature.dashboard.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,8 +68,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.example.bracesaligner.ui.theme.AlignerBlack
 import com.example.bracesaligner.ui.theme.AlignerGreen
+import com.example.bracesaligner.ui.theme.AlignerOffWhite
 import com.example.bracesaligner.ui.theme.AlignerTextGrey
+import com.example.bracesaligner.ui.theme.AlignerWhite
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -108,7 +115,7 @@ fun DashboardScreen(
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "Braces & Aligner",
+                    "Clinical Sanctuary",
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -132,12 +139,12 @@ fun DashboardScreen(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.AccountCircle,
+                                imageVector = Icons.Default.Info,
                                 contentDescription = null,
                                 tint = AlignerGreen,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(22.dp)
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Clinical Sanctuary",
                                 color = AlignerGreen,
@@ -155,8 +162,39 @@ fun DashboardScreen(
                         IconButton(onClick = { }) {
                             Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = AlignerGreen)
                         }
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(AlignerWhite)
+                                .border(1.dp, AlignerGreen, CircleShape)
+                                .clickable { onOpenProfile() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (state.profileImageUrl != null) {
+                                AsyncImage(
+                                    model = state.profileImageUrl,
+                                    contentDescription = "Profile",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile",
+                                    tint = AlignerGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = AlignerWhite,
+                        titleContentColor = AlignerGreen,
+                        navigationIconContentColor = AlignerGreen,
+                        actionIconContentColor = AlignerGreen
+                    )
                 )
             },
             bottomBar = {
@@ -176,7 +214,7 @@ fun DashboardScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFFF8F9FA))
+                        .background(AlignerOffWhite)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 24.dp)
                 ) {
@@ -184,7 +222,7 @@ fun DashboardScreen(
                         text = "${state.greeting}, ${state.userName}",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1C1E)
+                        color = AlignerBlack
                     )
                     Text(
                         text = "Your smile transformation is ${state.totalTransformationProgress}% complete.",
@@ -197,7 +235,7 @@ fun DashboardScreen(
                         !state.planAvailable -> {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = AlignerWhite),
                                 shape = RoundedCornerShape(16.dp),
                                 elevation = CardDefaults.cardElevation(0.dp)
                             ) {
@@ -276,7 +314,7 @@ fun DashboardScreen(
                 PullToRefreshContainer(
                     state = pullToRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter),
-                    containerColor = Color.White,
+                    containerColor = AlignerWhite,
                     contentColor = AlignerGreen
                 )
             }
@@ -300,7 +338,7 @@ fun PlanFinishedCard(
                 "Plan finished",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1A1C1E)
+                color = AlignerBlack
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -340,6 +378,7 @@ fun PhaseCard(state: DashboardUiState) {
                 "Aligner ${state.currentAlignerNumber} of ${state.totalAligners}",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
+                color = AlignerBlack,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -347,7 +386,12 @@ fun PhaseCard(state: DashboardUiState) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("${state.daysLeftInCurrentAligner} days left", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "${state.daysLeftInCurrentAligner} days left",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AlignerBlack
+                )
                 state.nextAlignerNumber?.let {
                     Text("Next: Aligner $it", fontSize = 14.sp, color = AlignerTextGrey)
                 }
@@ -370,7 +414,7 @@ fun PhaseCard(state: DashboardUiState) {
 fun AvgHoursCard(state: DashboardUiState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AlignerWhite),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -393,7 +437,7 @@ fun AvgHoursCard(state: DashboardUiState) {
                     text = state.averageDailyWearDisplay,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1C1E)
+                    color = AlignerBlack
                 )
                 Text(
                     "AVG. DAILY HOURS",
@@ -415,7 +459,7 @@ fun NonWearTimerCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AlignerWhite),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -439,7 +483,7 @@ fun NonWearTimerCard(
                     text = formattedTime,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1C1E)
+                    color = AlignerBlack
                 )
             }
 
@@ -453,7 +497,7 @@ fun NonWearTimerCard(
                 Icon(
                     imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isRunning) "Stop Timer" else "Start Timer",
-                    tint = Color.White,
+                    tint = AlignerWhite,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -478,7 +522,7 @@ fun ScanCard(onOpenScan: () -> Unit) {
                 Column {
                     Text(
                         "Capture your\nweekly scan",
-                        color = Color.White,
+                        color = AlignerWhite,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 26.sp
@@ -486,7 +530,7 @@ fun ScanCard(onOpenScan: () -> Unit) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Our AI analyzes your tooth movement to ensure your treatment is perfectly on track.",
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = AlignerWhite.copy(alpha = 0.8f),
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         modifier = Modifier.fillMaxWidth(0.8f)
@@ -514,7 +558,7 @@ fun ScanCard(onOpenScan: () -> Unit) {
 fun InfoCard(modifier: Modifier, title: String, subtitle: String, icon: ImageVector, iconBg: Color) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AlignerWhite),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -529,7 +573,7 @@ fun InfoCard(modifier: Modifier, title: String, subtitle: String, icon: ImageVec
                 Icon(icon, contentDescription = null, tint = AlignerGreen, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = AlignerBlack)
             Text(subtitle, color = AlignerTextGrey, fontSize = 12.sp)
         }
     }
@@ -548,14 +592,14 @@ fun ProTipCard(tip: String) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(AlignerWhite),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Info, contentDescription = null, tint = AlignerGreen, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text("Pro-tip: Aligner Care", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Pro-tip: Aligner Care", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = AlignerBlack)
                 Text(tip, fontSize = 12.sp, color = AlignerTextGrey, lineHeight = 16.sp)
             }
         }
@@ -569,16 +613,16 @@ fun BottomNavBar(
     onNavigateToProfile: () -> Unit
 ) {
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = AlignerWhite,
         tonalElevation = 8.dp
     ) {
         NavigationBarItem(
             selected = true,
             onClick = { },
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("PROGRESS") },
+            label = { Text("PROGRESS", color = AlignerGreen) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Color.White,
+                selectedIconColor = AlignerWhite,
                 selectedTextColor = AlignerGreen,
                 indicatorColor = AlignerGreen,
                 unselectedIconColor = AlignerTextGrey,
@@ -589,22 +633,37 @@ fun BottomNavBar(
             selected = false,
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN") },
-            colors = NavigationBarItemDefaults.colors(unselectedIconColor = AlignerTextGrey, unselectedTextColor = AlignerTextGrey)
+            label = { Text("PLAN", color = AlignerTextGrey) },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
         )
         NavigationBarItem(
             selected = false,
             onClick = onNavigateToScan,
             icon = { Icon(Icons.Default.Search, contentDescription = null) },
-            label = { Text("SCAN") },
-            colors = NavigationBarItemDefaults.colors(unselectedIconColor = AlignerTextGrey, unselectedTextColor = AlignerTextGrey)
+            label = { Text("SCAN", color = AlignerTextGrey) },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
         )
         NavigationBarItem(
             selected = false,
             onClick = onNavigateToProfile,
             icon = { Icon(Icons.Default.Person, contentDescription = null) },
-            label = { Text("PROFILE") },
-            colors = NavigationBarItemDefaults.colors(unselectedIconColor = AlignerTextGrey, unselectedTextColor = AlignerTextGrey)
+            label = { Text("PROFILE", color = AlignerTextGrey) },
+            colors = NavigationBarItemDefaults.colors(
+                unselectedIconColor = AlignerTextGrey,
+                unselectedTextColor = AlignerTextGrey,
+                selectedIconColor = AlignerGreen,
+                selectedTextColor = AlignerGreen
+            )
         )
     }
 }

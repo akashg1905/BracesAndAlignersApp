@@ -9,7 +9,8 @@ import com.example.bracesaligner.core.database.entity.AlignerScheduleItemEntity
 import com.example.bracesaligner.core.network.api.AlignerPlanApi
 import com.example.bracesaligner.core.network.dto.AlignerScheduleResponse
 import com.example.bracesaligner.core.network.dto.CreatePlanRequest
-import com.example.bracesaligner.feature.plan.domain.ScheduleGenerator
+import com.example.bracesaligner.core.network.dto.UpdateAlignerRequest
+import com.example.bracesaligner.core.network.dto.UpdatePlanScheduleRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -19,8 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class PlanRepository @Inject constructor(
     private val planApi: AlignerPlanApi,
-    private val planDao: AlignerPlanDao,
-    private val scheduleGenerator: ScheduleGenerator
+    private val planDao: AlignerPlanDao
 ) {
     fun observePlan(): Flow<AlignerPlan?> = planDao.observePlan().map { entity ->
         entity?.let {
@@ -55,21 +55,30 @@ class PlanRepository @Inject constructor(
             planStatus = response.planStatus
         )
         planDao.upsertPlan(entity)
-        val schedule = scheduleGenerator.generate(
-            alignerCount = entity.alignerCount,
-            daysPerAligner = entity.daysPerAligner,
-            startDateEpochDay = entity.startDateEpochDay
-        ).map {
-            AlignerScheduleItemEntity(
-                id = UUID.randomUUID().toString(),
-                planId = entity.planId,
-                alignerNumber = it.alignerNumber,
-                startEpochDay = it.startEpochDay,
-                endEpochDay = it.endEpochDay
-            )
+        
+        // Fetch and save the actual schedule from the server
+        try {
+            val scheduleResponse = planApi.getSchedule()
+            if (scheduleResponse.isSuccessful) {
+                val remoteSchedule = scheduleResponse.body()?.schedule?.map {
+                    AlignerScheduleItemEntity(
+                        id = it.alignerId,
+                        planId = entity.planId,
+                        alignerNumber = it.alignerNumber,
+                        daysForAligner = it.daysForAligner,
+                        startEpochDay = it.startDateEpochDay,
+                        endEpochDay = it.endDateEpochDay,
+                        startDate = it.startDate,
+                        endDate = it.endDate,
+                        isCurrent = it.isCurrent
+                    )
+                } ?: emptyList()
+                planDao.clearSchedule(entity.planId)
+                planDao.insertSchedule(remoteSchedule)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        planDao.clearSchedule(entity.planId)
-        planDao.insertSchedule(schedule)
     }
 
     suspend fun syncActivePlan() {
@@ -95,21 +104,26 @@ class PlanRepository @Inject constructor(
                 planStatus = body.planStatus
             )
             planDao.upsertPlan(entity)
-            val schedule = scheduleGenerator.generate(
-                alignerCount = entity.alignerCount,
-                daysPerAligner = entity.daysPerAligner,
-                startDateEpochDay = entity.startDateEpochDay
-            ).map {
-                AlignerScheduleItemEntity(
-                    id = UUID.randomUUID().toString(),
-                    planId = entity.planId,
-                    alignerNumber = it.alignerNumber,
-                    startEpochDay = it.startEpochDay,
-                    endEpochDay = it.endEpochDay
-                )
+            
+            // Fetch and save the actual schedule from the server
+            val scheduleResponse = planApi.getSchedule()
+            if (scheduleResponse.isSuccessful) {
+                val remoteSchedule = scheduleResponse.body()?.schedule?.map {
+                    AlignerScheduleItemEntity(
+                        id = it.alignerId,
+                        planId = entity.planId,
+                        alignerNumber = it.alignerNumber,
+                        daysForAligner = it.daysForAligner,
+                        startEpochDay = it.startDateEpochDay,
+                        endEpochDay = it.endDateEpochDay,
+                        startDate = it.startDate,
+                        endDate = it.endDate,
+                        isCurrent = it.isCurrent
+                    )
+                } ?: emptyList()
+                planDao.clearSchedule(entity.planId)
+                planDao.insertSchedule(remoteSchedule)
             }
-            planDao.clearSchedule(entity.planId)
-            planDao.insertSchedule(schedule)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -119,9 +133,14 @@ class PlanRepository @Inject constructor(
         return planDao.observeSchedule(planId).map { list ->
             list.map {
                 AlignerScheduleItem(
+                    id = it.id,
                     alignerNumber = it.alignerNumber,
+                    daysForAligner = it.daysForAligner,
                     startEpochDay = it.startEpochDay,
-                    endEpochDay = it.endEpochDay
+                    endEpochDay = it.endEpochDay,
+                    startDate = it.startDate,
+                    endDate = it.endDate,
+                    isCurrent = it.isCurrent
                 )
             }
         }
@@ -132,7 +151,9 @@ class PlanRepository @Inject constructor(
         if (response.isSuccessful) {
             return response.body()?.schedule?.map {
                 AlignerScheduleItem(
+                    id = it.alignerId,
                     alignerNumber = it.alignerNumber,
+                    daysForAligner = it.daysForAligner,
                     startEpochDay = it.startDateEpochDay,
                     endEpochDay = it.endDateEpochDay,
                     isCurrent = it.isCurrent,
@@ -142,6 +163,17 @@ class PlanRepository @Inject constructor(
             } ?: emptyList()
         } else {
             throw Exception("Failed to fetch schedule: ${response.message()}")
+        }
+    }
+
+    suspend fun updateSchedule(planId: String?, updates: List<UpdateAlignerRequest>) {
+        val response = planApi.updateSchedule(UpdatePlanScheduleRequest(planId, updates))
+        if (response.isSuccessful) {
+            // After successful update, re-sync the whole schedule to local DB
+            // to ensure UI reflects the recalibrated dates.
+            syncActivePlan()
+        } else {
+            throw Exception("Failed to update schedule: ${response.errorBody()?.string()}")
         }
     }
 

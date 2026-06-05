@@ -17,11 +17,21 @@ object NotificationHelper {
     fun createChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_TIMER, "Timer Alerts", NotificationManager.IMPORTANCE_HIGH)
+        manager?.createNotificationChannel(
+            NotificationChannel(CHANNEL_TIMER, "Timer Alerts", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
         )
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_REMINDER, "Daily Reminders", NotificationManager.IMPORTANCE_DEFAULT)
+        manager?.createNotificationChannel(
+            NotificationChannel(CHANNEL_REMINDER, "Daily Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableLights(true)
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
         )
     }
 
@@ -29,12 +39,18 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
+
         val notification = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(title)
             .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
+
         NotificationManagerCompat.from(context).notify(id, notification)
     }
 }

@@ -25,16 +25,21 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         Log.i(TAG, "onReceive: action=$action")
         
         if (action == ACTION_CHECK_TIMER) {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "BracesAligner:TimerWakeLock")
+            wakeLock.acquire(10 * 1000L) // 10 seconds max
+
             scope.launch {
                 try {
                     Log.d(TAG, "Starting background check from AlarmManager")
                     timerRepository.checkAndDispatchNonWearNotifications(source = "alarm_manager")
                     
-                    // Reschedule next check if session is still active
-                    // Note: TimerRepository will handle the calculation of the next milestone
+                    // Reschedule next check
                     timerRepository.scheduleNextAlarm(context)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in TimerAlarmReceiver", e)
+                } finally {
+                    if (wakeLock.isHeld) wakeLock.release()
                 }
             }
         }
