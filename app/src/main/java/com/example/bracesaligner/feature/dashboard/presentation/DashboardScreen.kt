@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,18 +55,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,21 +93,6 @@ fun DashboardScreen(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val pullToRefreshState = rememberPullToRefreshState()
-
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) {
-            onRefresh()
-        }
-    }
-
-    LaunchedEffect(state.isRefreshing) {
-        if (state.isRefreshing) {
-            pullToRefreshState.startRefresh()
-        } else {
-            pullToRefreshState.endRefresh()
-        }
-    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -134,8 +119,10 @@ fun DashboardScreen(
         }
     ) {
         Scaffold(
+            modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
+                    windowInsets = WindowInsets.statusBars,
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -205,11 +192,12 @@ fun DashboardScreen(
                 )
             }
         ) { padding ->
-            Box(
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRefresh,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .nestedScroll(pullToRefreshState.nestedScrollConnection)
             ) {
                 Column(
                     modifier = Modifier
@@ -275,7 +263,8 @@ fun DashboardScreen(
                                 isRunning = state.timerState.isRunning,
                                 onToggleTimer = {
                                     if (state.timerState.isRunning) onStopTimer() else onStartTimer()
-                                }
+                                },
+                                onClick = onOpenTimerDetails
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -310,13 +299,6 @@ fun DashboardScreen(
                         }
                     }
                 }
-
-                PullToRefreshContainer(
-                    state = pullToRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    containerColor = AlignerWhite,
-                    contentColor = AlignerGreen
-                )
             }
         }
     }
@@ -455,10 +437,13 @@ fun AvgHoursCard(state: DashboardUiState) {
 fun NonWearTimerCard(
     formattedTime: String,
     isRunning: Boolean,
-    onToggleTimer: () -> Unit
+    onToggleTimer: () -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = AlignerWhite),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -484,6 +469,13 @@ fun NonWearTimerCard(
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = AlignerBlack
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Tap for more info",
+                    fontSize = 12.sp,
+                    color = AlignerGreen,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -633,7 +625,7 @@ fun BottomNavBar(
             selected = false,
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN", color = AlignerTextGrey) },
+            label = { Text("SCHEDULE", color = AlignerTextGrey) },
             colors = NavigationBarItemDefaults.colors(
                 unselectedIconColor = AlignerTextGrey,
                 unselectedTextColor = AlignerTextGrey,

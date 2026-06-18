@@ -3,11 +3,13 @@ package com.example.bracesaligner.feature.profile.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.bracesaligner.feature.profile.data.UserRepository
+import com.example.bracesaligner.feature.plan.data.PlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import okhttp3.MultipartBody
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,12 +24,15 @@ data class ProfileUiState(
     val isUpdating: Boolean = false,
     val hasChanges: Boolean = false,
     val successMessage: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val planAvailable: Boolean = false,
+    val isPlanExpired: Boolean = false
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val planRepository: PlanRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -36,8 +41,14 @@ class ProfileViewModel @Inject constructor(
     private var initialProfile: ProfileUiState? = null
 
     init {
-        // Removed loadProfile() from init to avoid unnecessary API calls when just viewing the profile tab.
-        // It should be called explicitly when entering the edit profile screen.
+        viewModelScope.launch {
+            planRepository.observePlan().collect { plan ->
+                _uiState.value = _uiState.value.copy(
+                    planAvailable = plan != null,
+                    isPlanExpired = plan?.isExpired ?: false
+                )
+            }
+        }
     }
 
     fun loadProfile() {

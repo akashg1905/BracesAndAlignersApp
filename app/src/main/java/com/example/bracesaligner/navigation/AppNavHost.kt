@@ -98,7 +98,13 @@ fun AppNavHost(navController: NavHostController) {
                 state = state,
                 onStartTimer = viewModel::startTimer,
                 onStopTimer = viewModel::stopTimer,
-                onOpenPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onOpenPlan = {
+                    if (!state.planAvailable || state.isPlanExpired) {
+                        navController.navigate(Routes.PLAN_SETUP)
+                    } else {
+                        navController.navigate(Routes.SCHEDULE)
+                    }
+                },
                 onOpenTimerDetails = { navController.navigate(Routes.TIMER_DETAIL) },
                 onOpenScan = { navController.navigate(Routes.SCAN) },
                 onOpenProfile = { navController.navigate(Routes.PROFILE) },
@@ -119,7 +125,13 @@ fun AppNavHost(navController: NavHostController) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
                 },
-                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToPlan = {
+                    if (!state.planAvailable || state.isPlanExpired) {
+                        navController.navigate(Routes.PLAN_SETUP)
+                    } else {
+                        navController.navigate(Routes.SCHEDULE)
+                    }
+                },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) },
                 onNavigateToSchedule = { navController.navigate(Routes.SCHEDULE) }
             )
@@ -146,7 +158,13 @@ fun AppNavHost(navController: NavHostController) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
                 },
-                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToPlan = {
+                    if (!state.planAvailable || state.isPlanExpired) {
+                        navController.navigate(Routes.PLAN_SETUP)
+                    } else {
+                        navController.navigate(Routes.SCHEDULE)
+                    }
+                },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) }
             )
         }
@@ -170,35 +188,40 @@ fun AppNavHost(navController: NavHostController) {
             )
         }
         composable(Routes.SCAN) {
-            val viewModel: ProfileViewModel = hiltViewModel()
+            val viewModel: DashboardViewModel = hiltViewModel()
             val state = viewModel.uiState.collectAsStateWithLifecycle().value
             
-            LaunchedEffect(Unit) {
-                viewModel.loadProfile()
-            }
-
             WeeklyScanScreen(
-                profileImageUrl = state.profileImage,
+                profileImageUrl = state.profileImageUrl,
                 onBack = { navController.popBackStack() },
-                onStartScan = { /* TODO: Launch AI scanning experience */ },
+                onStartScan = { /* Handled internally in WeeklyScanScreen now */ },
                 onNavigateToProgress = {
                     navController.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
                 },
-                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToPlan = {
+                    if (!state.planAvailable || state.isPlanExpired) {
+                        navController.navigate(Routes.PLAN_SETUP)
+                    } else {
+                        navController.navigate(Routes.SCHEDULE)
+                    }
+                },
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
         composable(Routes.TIMER_DETAIL) {
             val viewModel: TimerViewModel = hiltViewModel()
             val state = viewModel.timerState.collectAsStateWithLifecycle().value
+            val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
             val weekly = viewModel.weeklySummary.collectAsStateWithLifecycle().value
+            val todaySessions = viewModel.todaySessions.collectAsStateWithLifecycle().value
             val profileImageUrl = viewModel.profileImageUrl.collectAsStateWithLifecycle().value
             TimerDetailScreen(
                 state = state,
                 profileImageUrl = profileImageUrl,
                 weeklySummary = weekly,
+                todaySessions = todaySessions,
                 onStart = viewModel::startTimer,
                 onStop = viewModel::stopTimer,
                 onBack = { navController.popBackStack() },
@@ -207,7 +230,13 @@ fun AppNavHost(navController: NavHostController) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
                 },
-                onNavigateToPlan = { navController.navigate(Routes.PLAN_SETUP) },
+                onNavigateToPlan = {
+                    if (!uiState.planAvailable || uiState.isPlanExpired) {
+                        navController.navigate(Routes.PLAN_SETUP)
+                    } else {
+                        navController.navigate(Routes.SCHEDULE)
+                    }
+                },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) },
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )

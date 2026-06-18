@@ -80,7 +80,8 @@ fun ProfileScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AlignerWhite)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AlignerWhite),
+                windowInsets = WindowInsets.statusBars
             )
         },
         bottomBar = {
@@ -266,7 +267,7 @@ fun ProfileBottomNavBar(
             selected = false,
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN") },
+            label = { Text("SCHEDULE") },
             colors = NavigationBarItemDefaults.colors(
                 unselectedIconColor = AlignerTextGrey,
                 unselectedTextColor = AlignerTextGrey,

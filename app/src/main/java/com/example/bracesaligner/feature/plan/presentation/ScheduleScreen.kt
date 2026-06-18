@@ -2,6 +2,7 @@ package com.example.bracesaligner.feature.plan.presentation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -66,12 +67,14 @@ fun ScheduleScreen(
     }
 
     Scaffold(
+        modifier = Modifier.background(AlignerWhite),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets.statusBars,
                 title = {
                     Text(
                         "Aligner Schedule",
-                        color = Color(0xFF006064), // Darker teal from SS
+                        color = AlignerGreen,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -103,7 +106,7 @@ fun ScheduleScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AlignerOffWhite)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AlignerWhite)
             )
         },
         bottomBar = {
@@ -164,7 +167,7 @@ fun ScheduleScreen(
                         .padding(20.dp)
                         .fillMaxWidth()
                         .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C)),
+                    colors = ButtonDefaults.buttonColors(containerColor = AlignerGreen),
                     shape = RoundedCornerShape(28.dp),
                     enabled = !state.isUpdating
                 ) {
@@ -173,7 +176,7 @@ fun ScheduleScreen(
                     } else {
                         Icon(Icons.Default.Update, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Update Schedule", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Update Schedule", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AlignerWhite)
                     }
                 }
             }
@@ -280,28 +283,38 @@ fun AlignerScheduleCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AlignerOffWhite)
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .background(Color(0xFFF7F8F9))
                     ) {
                         IconButton(
                             onClick = onDecrement,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "Decrease",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFF2D5A5E)
+                            )
                         }
                         
                         Text(
-                            text = "${item.daysForAligner} Days",
-                            fontSize = 15.sp,
+                            text = "${item.daysForAligner}d",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp)
+                            color = AlignerBlack,
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         )
 
                         IconButton(
                             onClick = onIncrement,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Increase",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFF2D5A5E)
+                            )
                         }
                     }
                 }
@@ -313,13 +326,13 @@ fun AlignerScheduleCard(
 @Composable
 fun StatusBadge(isCompleted: Boolean, isCurrent: Boolean) {
     val backgroundColor = when {
-        isCompleted -> Color(0xFFF5F5F5)
-        isCurrent -> Color(0xFFB2EBF2)
-        else -> Color(0xFFEEEEEE)
+        isCompleted -> AlignerOffWhite
+        isCurrent -> AlignerGreen.copy(alpha = 0.12f)
+        else -> AlignerOffWhite
     }
     val contentColor = when {
         isCompleted -> AlignerTextGrey
-        isCurrent -> Color(0xFF00ACC1)
+        isCurrent -> AlignerGreen
         else -> AlignerTextGrey
     }
     val text = when {
@@ -372,13 +385,13 @@ fun DynamicRecalibrationCard() {
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE0F7FA)),
+                    .background(AlignerGreen.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Lightbulb,
                     contentDescription = null,
-                    tint = Color(0xFF00838F),
+                    tint = AlignerGreen,
                     modifier = Modifier.size(18.dp)
                 )
             }

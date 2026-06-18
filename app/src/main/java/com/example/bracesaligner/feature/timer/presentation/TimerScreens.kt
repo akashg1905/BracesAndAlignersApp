@@ -24,7 +24,11 @@ import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.example.bracesaligner.core.common.TimerState
 import com.example.bracesaligner.core.database.entity.DailyNonWearSummaryEntity
+import com.example.bracesaligner.core.database.entity.NonWearSessionEntity
 import com.example.bracesaligner.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +36,7 @@ fun TimerDetailScreen(
     state: TimerState,
     profileImageUrl: String? = null,
     weeklySummary: List<DailyNonWearSummaryEntity>,
+    todaySessions: List<NonWearSessionEntity> = emptyList(),
     onStart: () -> Unit,
     onStop: () -> Unit,
     onBack: () -> Unit,
@@ -40,12 +45,18 @@ fun TimerDetailScreen(
     onNavigateToScan: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
 ) {
+    val timeFormatter = SimpleDateFormat("hh:mm:ss aa", Locale.getDefault())
+    val dateFormatter = SimpleDateFormat("EEEE, MMM dd", Locale.getDefault())
+    val todayDateStr = dateFormatter.format(Date())
+
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
+                windowInsets = WindowInsets.statusBars,
                 title = {
                     Text(
-                        "Clinical Sanctuary",
+                        "Non-Wear Details",
                         color = AlignerGreen,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
@@ -100,19 +111,19 @@ fun TimerDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(AlignerOffWhite)
+                .background(AlignerWhite)
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.Top
         ) {
             Text(
-                "Non-Wear Timer",
+                text = todayDateStr,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = AlignerBlack
             )
             Text(
-                "Keep track of the time you spend without your aligners.",
+                "Summary of periods when aligners were removed.",
                 fontSize = 15.sp,
                 color = AlignerTextGrey,
                 modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
@@ -121,95 +132,143 @@ fun TimerDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = AlignerWhite),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FBFC)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "TODAY'S TOTAL",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AlignerTextGrey,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "${state.todayTotalMillis / 60000} min",
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AlignerBlack
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "Warning at ${state.warningMinutes} min • Limit ${state.limitMinutes} min",
-                        color = AlignerTextGrey,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = if (state.isRunning) onStop else onStart,
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            "Start Time",
+                            color = AlignerGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1.1f)
+                        )
+                        Text(
+                            "End Time",
+                            color = AlignerGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1.1f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                        )
+                        Text(
+                            "Duration",
+                            color = AlignerGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(0.8f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    todaySessions.forEach { session ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                timeFormatter.format(Date(session.startEpochMillis)).uppercase(),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AlignerBlack,
+                                modifier = Modifier.weight(1.1f)
+                            )
+                            Text(
+                                (session.endEpochMillis?.let { timeFormatter.format(Date(it)) } ?: "Ongoing").uppercase(),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AlignerBlack,
+                                modifier = Modifier.weight(1.1f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                            )
+                            val durationMillis = (session.endEpochMillis ?: System.currentTimeMillis()) - session.startEpochMillis
+                            val totalSeconds = durationMillis / 1000
+                            val h = totalSeconds / 3600
+                            val m = (totalSeconds % 3600) / 60
+                            val s = totalSeconds % 60
+                            
+                            val durationText = buildString {
+                                if (h > 0) append("${h}h ")
+                                if (m > 0) append("${m}m ")
+                                if (s > 0 || (h == 0L && m == 0L)) append("${s}s")
+                            }.trim()
+                            Text(
+                                durationText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AlignerBlack,
+                                modifier = Modifier.weight(0.8f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (state.isRunning) Color(0xFFE57373) else AlignerGreen
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFF1F8F9))
+                            .padding(16.dp)
                     ) {
-                        Icon(
-                            if (state.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if (state.isRunning) "Stop Timer" else "Start Timer",
-                            color = AlignerWhite,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Daily Total Non-Wear", color = AlignerTextGrey, fontWeight = FontWeight.Medium)
+                            val totalSeconds = state.todayTotalMillis / 1000
+                            val h = totalSeconds / 3600
+                            val m = (totalSeconds % 3600) / 60
+                            val s = totalSeconds % 60
+                            
+                            val totalText = buildString {
+                                if (h > 0) append("${h}h ")
+                                append("${m}m ")
+                                append("${s}s")
+                            }.trim()
+
+                            Text(
+                                totalText,
+                                color = AlignerGreen,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Text(
-                "History (Last 7 Days)",
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = AlignerBlack
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            weeklySummary.forEach { summary ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = AlignerWhite)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Day ${summary.dateEpochDay}",
-                            fontWeight = FontWeight.Medium,
-                            color = AlignerBlack
-                        )
-                        Text(
-                            "${summary.totalMinutes} min",
-                            fontWeight = FontWeight.Bold,
-                            color = AlignerGreen
-                        )
-                    }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1).copy(alpha = 0.5f)),
+                border = androidx.compose.foundation.BorderStroke(2.dp, AlignerGreen.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        "\"Consistency is key to a perfect smile. Your goal is 22 hours of wear time per day. Try to minimize non-wear sessions by planning meals and oral care.\"",
+                        fontSize = 14.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        color = AlignerGreen,
+                        lineHeight = 22.sp
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -242,7 +301,7 @@ fun TimerBottomNavBar(
             selected = false,
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN") },
+            label = { Text("SCHEDULE") },
             colors = NavigationBarItemDefaults.colors(
                 unselectedIconColor = AlignerTextGrey,
                 unselectedTextColor = AlignerTextGrey,

@@ -16,11 +16,13 @@ import com.example.bracesaligner.core.network.api.NotificationApi
 import com.example.bracesaligner.core.network.api.TimerApi
 import retrofit2.HttpException
 import com.example.bracesaligner.core.network.dto.NotificationDispatchRequest
+import com.example.bracesaligner.core.network.dto.NotificationDispatchResponse
 import com.example.bracesaligner.core.network.dto.TimerSessionRequest
 import com.example.bracesaligner.core.network.dto.TimerSessionResponse
 import com.example.bracesaligner.feature.timer.domain.TimerThresholdEvaluator
 import com.example.bracesaligner.core.preferences.SessionStore
-import com.example.bracesaligner.feature.notifications.TimerAlarmReceiver
+import com.example.bracesaligner.feature.notifications.NotificationHelper
+import com.example.bracesaligner.feature.notifications.TimerForegroundService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -66,11 +68,22 @@ class TimerRepository @Inject constructor(
         }
     }
 
+    fun observeSessionsForDay(epochDay: Long): Flow<List<NonWearSessionEntity>> {
+        return timerDao.observeSessionsForDay(epochDay)
+    }
+
     private suspend fun getCurrentAlignerNumber(): Int {
         val plan = planDao.getPlan() ?: return 1
         val today = TimeUtils.todayEpochDay()
         val daysSinceStart = (today - plan.startDateEpochDay).toInt()
         if (daysSinceStart < 0) return 1
+        
+        // Handle potential divide by zero if plan data is invalid
+        if (plan.daysPerAligner <= 0) {
+            Log.e(TAG, "[PLAN] Invalid daysPerAligner (${plan.daysPerAligner}) for plan ${plan.planId}. Defaulting to aligner 1.")
+            return 1
+        }
+
         val currentAligner = (daysSinceStart / plan.daysPerAligner) + 1
         return currentAligner.coerceAtMost(plan.alignerCount)
     }
@@ -94,7 +107,13 @@ class TimerRepository @Inject constructor(
         timerDao.upsertSession(session)
 
         Log.i(TAG, "[START] Session persisted successfully locally")
-        scheduleNextAlarm(context)
+        
+        val intent = Intent(context, TimerForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
     }
 
     suspend fun stopTimer() {
@@ -106,7 +125,8 @@ class TimerRepository @Inject constructor(
         val now = TimeUtils.nowMillis()
         Log.i(TAG, "[STOP] Stopping session=${active.sessionId}, started=${active.startEpochMillis}, ended=$now")
         timerDao.stopSession(active.sessionId, now)
-        cancelAlarm(context)
+        
+        context.stopService(Intent(context, TimerForegroundService::class.java))
         
         // Immediate sync of the session just finished
         try {
@@ -225,16 +245,25 @@ class TimerRepository @Inject constructor(
                     )
                 )
                 Log.i(TAG, "[SUMMARY] Restored active session: ${activeToRestore.sessionId}")
-                scheduleNextAlarm(context)
+                startForegroundServiceIfNeeded()
             } else {
                 // Final check: did we restore an active session from the DB?
                 if (timerDao.getActiveSession() != null) {
                     Log.i(TAG, "[SUMMARY] Resuming active session from local DB")
-                    scheduleNextAlarm(context)
+                    startForegroundServiceIfNeeded()
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "[SUMMARY] Failed to refresh summary", e)
+        }
+    }
+
+    private fun startForegroundServiceIfNeeded() {
+        val intent = Intent(context, TimerForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
         }
     }
 
@@ -275,137 +304,68 @@ class TimerRepository @Inject constructor(
         val activeSession = timerDao.getActiveSession()
         
         if (activeSession == null) {
-            val allSessions = timerDao.getAllSessions()
-            Log.w(TAG, "[DISPATCH_CHECK][$source] No active session. sessionsInDb=${allSessions.size}")
-            if (allSessions.isNotEmpty()) {
-                val last = allSessions.first()
-                Log.d(TAG, "[DISPATCH_CHECK][$source] Last session id=${last.sessionId} start=${last.startEpochMillis} end=${last.endEpochMillis}")
-            }
+            Log.w(TAG, "[DISPATCH_CHECK][$source] No active session.")
             return
         }
 
         val now = TimeUtils.nowMillis()
         val elapsedMillis = now - activeSession.startEpochMillis
         val elapsedMinutes = (elapsedMillis / 60000).toInt()
-        Log.i(TAG, "[DISPATCH_CHECK][$source] session=${activeSession.sessionId} elapsedMin=$elapsedMinutes lastNotifiedMin=${activeSession.lastNotificationMinutes}")
-
-        // Milestones: 30m, 1h, 1.5h, 2h, 2.5h, 3h, etc.
-        val intervals = listOf(30, 60, 90, 120, 150, 180, 240, 300, 360, 420, 480)
         
-        // Find the highest milestone we have crossed but haven't notified for yet
-        val nextInterval = intervals.lastOrNull { 
-            elapsedMinutes >= it && it > activeSession.lastNotificationMinutes 
-        }
+        val currentInterval = elapsedMinutes / 5
+        val lastInterval = activeSession.lastNotificationMinutes / 5
 
-        if (nextInterval == null) {
-            Log.d(TAG, "[DISPATCH_CHECK][$source] No milestone crossed yet. nextTargetMin=${((activeSession.lastNotificationMinutes / 5) + 1) * 5}")
+        if (currentInterval <= lastInterval) {
+            Log.d(TAG, "[DISPATCH_CHECK][$source] No new 5-minute milestone crossed. currentInterval=$currentInterval, lastInterval=$lastInterval")
             return
         }
 
-        try {
-            dispatchMutex.withLock {
-                // Re-fetch to ensure we have the most up-to-date 'lastNotificationMinutes'
-                val latestSession = timerDao.getActiveSession() ?: return
-                if (latestSession.lastNotificationMinutes >= nextInterval) {
-                    Log.d(TAG, "[DISPATCH_CHECK][$source] Already notified for $nextInterval. Skipping.")
-                    return
-                }
+        Log.i(TAG, "[DISPATCH_CHECK][$source] session=${activeSession.sessionId} elapsedMin=$elapsedMinutes lastNotifiedMin=${activeSession.lastNotificationMinutes}. New milestones to process: ${lastInterval + 1} to $currentInterval")
 
-                val today = TimeUtils.todayEpochDay()
-                val finishedMillis = timerDao.getDayTotalMillis(today)
-                val totalNonWearMinutes = ((finishedMillis + elapsedMillis) / 60000).toInt()
+        for (i in lastInterval + 1..currentInterval) {
+            val milestone = i * 5
+            try {
+                dispatchMutex.withLock {
+                    // Re-fetch to ensure we have the most up-to-date 'lastNotificationMinutes'
+                    val latestSession = timerDao.getActiveSession() ?: return@withLock
+                    if (latestSession.lastNotificationMinutes >= milestone) {
+                        Log.d(TAG, "[DISPATCH_CHECK][$source] Already notified for $milestone. Skipping.")
+                        return@withLock
+                    }
 
-                Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatching /api/notifications/dispatch for milestone=$nextInterval. totalNonWearMinutes=$totalNonWearMinutes")
-                val code = "NF100"
-                
-                notificationApi.dispatchNotification(
-                    listOf(
-                        NotificationDispatchRequest(
-                            code = code,
-                            nonWearTime = totalNonWearMinutes
+                    val today = TimeUtils.todayEpochDay()
+                    val finishedMillis = timerDao.getDayTotalMillis(today)
+                    // Use actual elapsed time for the non-wear time reporting
+                    val totalNonWearMinutes = ((finishedMillis + (milestone * 60000L)) / 60000).toInt()
+
+                    Log.i(TAG, "[DISPATCH_CHECK][$source] 🔔 TRIGGERING NOTIFICATION: Milestone ${milestone}m reached. Sending NF100.")
+                    
+                    val response = notificationApi.dispatchNotification(
+                        listOf(
+                            NotificationDispatchRequest(
+                                code = "NF100",
+                                nonWearTime = totalNonWearMinutes
+                            )
                         )
                     )
-                )
-                
-                // Update DB ONLY after successful API call
-                timerDao.updateLastNotification(activeSession.sessionId, nextInterval)
-                Log.i(TAG, "[DISPATCH_CHECK][$source] Dispatch success for milestone=$nextInterval. DB updated.")
-            }
-        } catch (e: Exception) {
-            if (e is HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch 422/Error: $errorBody")
-            }
-            Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch FAILED for milestone=$nextInterval. Will retry on next check.", e)
-        }
-    }
 
-    fun scheduleNextAlarm(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        
-        // We schedule the next check exactly 5 minutes from now.
-        val intent = Intent(context, TimerAlarmReceiver::class.java).apply {
-            action = TimerAlarmReceiver.ACTION_CHECK_TIMER
-        }
-        
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 
-            0, 
-            intent, 
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val now = System.currentTimeMillis()
-        val triggerAt = now + (5 * 60 * 1000)
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerAt,
-                        pendingIntent
-                    )
-                    Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
-                } else {
-                    alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerAt,
-                        pendingIntent
-                    )
-                    Log.d(TAG, "[ALARM] Scheduled inexact alarm at $triggerAt")
+                    Log.i(TAG, "[DISPATCH_CHECK][$source] 📥 Backend Response Received: $response. Relying on FCM for display.")
+                    
+                    // Update DB ONLY after successful API call
+                    timerDao.updateLastNotification(activeSession.sessionId, milestone)
+                    Log.i(TAG, "[DISPATCH_CHECK][$source] ✅ NOTIFICATION DISPATCHED SUCCESSFULLY: Milestone ${milestone}m recorded in DB.")
                 }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAt,
-                    pendingIntent
-                )
-                Log.d(TAG, "[ALARM] Scheduled exact alarm at $triggerAt")
+            } catch (e: Exception) {
+                if (e is HttpException) {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch 422/Error: $errorBody")
+                }
+                Log.e(TAG, "[DISPATCH_CHECK][$source] Dispatch FAILED for milestone=$milestone. Will retry.", e)
+                // Stop processing further milestones if one fails to maintain order/reliability
+                break
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "[ALARM] Failed to schedule alarm", e)
-            // Fallback for safety
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAt,
-                pendingIntent
-            )
         }
     }
 
-    fun cancelAlarm(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, TimerAlarmReceiver::class.java).apply {
-            action = TimerAlarmReceiver.ACTION_CHECK_TIMER
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 
-            0, 
-            intent, 
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        alarmManager.cancel(pendingIntent)
-        Log.d(TAG, "[ALARM] Cancelled")
-    }
+    // AlarmManager helper methods removed as per requirements
 }

@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.core.view.WindowCompat
 import com.example.bracesaligner.feature.auth.data.TokenRefreshWorker
 import com.example.bracesaligner.feature.notifications.TimerCheckWorker
 import java.util.concurrent.TimeUnit
@@ -30,13 +31,12 @@ class BracesApp : Application(), Configuration.Provider {
         
         val workManager = WorkManager.getInstance(this)
 
-        // Schedule the timer check worker to run every 5 minutes (using OneTimeWork chain)
-        val timerCheckRequest = OneTimeWorkRequestBuilder<TimerCheckWorker>()
-            .setInitialDelay(5, TimeUnit.MINUTES)
+        // Schedule the timer check worker as a periodic backup (every 15 minutes)
+        val timerCheckRequest = PeriodicWorkRequestBuilder<TimerCheckWorker>(15, TimeUnit.MINUTES)
             .build()
-        workManager.enqueueUniqueWork(
-            "timer_check_worker_oneshot",
-            ExistingWorkPolicy.KEEP,
+        workManager.enqueueUniquePeriodicWork(
+            "timer_check_worker_periodic",
+            ExistingPeriodicWorkPolicy.KEEP,
             timerCheckRequest
         )
 

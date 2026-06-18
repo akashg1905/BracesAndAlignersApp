@@ -25,6 +25,9 @@ interface NonWearTimerDao {
     @Query("UPDATE non_wear_session SET endEpochMillis = :endMillis WHERE sessionId = :sessionId")
     suspend fun stopSession(sessionId: String, endMillis: Long)
 
+    @Query("SELECT * FROM non_wear_session WHERE dateEpochDay = :epochDay ORDER BY startEpochMillis ASC")
+    fun observeSessionsForDay(epochDay: Long): Flow<List<NonWearSessionEntity>>
+
     @Query("SELECT COALESCE(SUM(endEpochMillis - startEpochMillis), 0) FROM non_wear_session WHERE dateEpochDay = :epochDay AND endEpochMillis IS NOT NULL")
     fun observeDayTotalMillis(epochDay: Long): Flow<Long>
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -137,7 +138,8 @@ fun PlanSetupScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+                windowInsets = WindowInsets.statusBars
             )
         }
     ) { padding ->
@@ -214,7 +216,7 @@ fun PlanSetupScreen(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            "Create My Plan",
+                            "Create My Schedule",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
@@ -500,7 +502,7 @@ fun PlanBottomNavBar(
             selected = true,
             onClick = { },
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN") },
+            label = { Text("SCHEDULE") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = AlignerWhite,
                 selectedTextColor = AlignerGreen,

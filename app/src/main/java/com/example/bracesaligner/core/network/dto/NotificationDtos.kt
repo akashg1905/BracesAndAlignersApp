@@ -21,3 +21,16 @@ data class NotificationDispatchRequest(
     @SerializedName("non_wear_time")
     val nonWearTime: Int? = null
 )
+
+data class NotificationDispatchResponse(
+    @SerializedName("message")
+    val message: String? = null,
+    @SerializedName("msg")
+    val msg: String? = null,
+    @SerializedName("body")
+    val body: String? = null,
+    @SerializedName("title")
+    val title: String? = null
+) {
+    fun getDisplayMessage(): String? = message ?: msg ?: body
+}

@@ -41,13 +41,36 @@ class BracesFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+        
+        // Log the entire raw data to help debug exactly what the backend is sending
+        android.util.Log.i("BracesFCM", "📩 FCM RAW DATA: ${message.data}")
+        android.util.Log.i("BracesFCM", "📩 FCM NOTIFICATION: title='${message.notification?.title}', body='${message.notification?.body}'")
+
+        // 1. Try to get title from various possible keys
+        val title = message.data["title"] 
+            ?: message.data["notification_title"]
+            ?: message.notification?.title 
+            ?: "Braces & Aligner"
+        
+        // 2. Try to get body/message from various possible keys
+        val body = message.data["body"]
+            ?: message.data["message"]
+            ?: message.data["msg"]
+            ?: message.data["text"]
+            ?: message.data["alert"]
+            ?: message.data["notification_body"]
+            ?: message.notification?.body
+            ?: "Time for a check! Please check your aligner status." // More descriptive fallback
+
+        android.util.Log.i("BracesFCM", "🔔 DISPATCHING: Title='$title', Body='$body'")
+        
         NotificationHelper.createChannels(this)
         NotificationHelper.send(
             context = this,
             id = 3001,
             channel = NotificationHelper.CHANNEL_REMINDER,
-            title = message.notification?.title ?: "BracesAndAligner",
-            body = message.notification?.body ?: "You have a new reminder."
+            title = title,
+            body = body
         )
     }
 }

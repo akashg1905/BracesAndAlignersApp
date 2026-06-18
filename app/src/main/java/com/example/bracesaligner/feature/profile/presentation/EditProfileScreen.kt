@@ -448,7 +448,7 @@ fun EditProfileBottomNavBar(
             selected = false,
             onClick = onNavigateToPlan,
             icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
-            label = { Text("PLAN") },
+            label = { Text("SCHEDULE") },
             colors = NavigationBarItemDefaults.colors(
                 unselectedIconColor = AlignerTextGrey,
                 unselectedTextColor = AlignerTextGrey,

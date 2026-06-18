@@ -39,7 +39,7 @@ class TimerCheckWorker @AssistedInject constructor(
             val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
             
             if (lastDaily < today && currentHour >= 20) {
-                Log.d(TAG, "[WORKER] Sending daily summary reminder for day=$today")
+                Log.i(TAG, "[WORKER] 🔔 TRIGGERING LOCAL NOTIFICATION: Daily summary reminder for day=$today")
                 NotificationHelper.createChannels(applicationContext)
                 NotificationHelper.send(
                     context = applicationContext,
@@ -49,33 +49,14 @@ class TimerCheckWorker @AssistedInject constructor(
                     body = "Daily summary: Open app to review your non-wear time."
                 )
                 sessionStore.saveLastDailyReminderDay(today)
+                Log.i(TAG, "[WORKER] ✅ LOCAL NOTIFICATION SENT: Daily summary for day=$today")
             } else {
                 Log.d(TAG, "[WORKER] Daily summary already sent for day=$today")
             }
 
-            Log.d(TAG, "[WORKER] Completed successfully. Rescheduling in 5 minutes.")
-            
-            // Self-reschedule to bypass the 15-minute minimum of PeriodicWork
-            val nextRequest = OneTimeWorkRequestBuilder<TimerCheckWorker>()
-                .setInitialDelay(5, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-                "timer_check_worker_oneshot",
-                ExistingWorkPolicy.REPLACE,
-                nextRequest
-            )
-
+            Log.d(TAG, "[WORKER] Completed successfully.")
         } catch (e: Exception) {
             Log.e(TAG, "[WORKER] Failed", e)
-            // Even on failure, we want to try again in 5 mins
-            val nextRequest = OneTimeWorkRequestBuilder<TimerCheckWorker>()
-                .setInitialDelay(5, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-                "timer_check_worker_oneshot",
-                ExistingWorkPolicy.REPLACE,
-                nextRequest
-            )
             return Result.retry()
         }
         return Result.success()
