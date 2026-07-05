@@ -1,4 +1,4 @@
-package com.example.bracesaligner.feature.timer.domain
+package com.smylo.feature.timer.domain
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,3 +21,4 @@ class TimerThresholdEvaluatorTest {
         assertTrue(result.limitExceeded)
     }
 }
+
