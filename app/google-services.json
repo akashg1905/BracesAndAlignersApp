@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:906474150914:android:d31ad1a841e54983c2db1b",
+        "mobilesdk_app_id": "1:906474150914:android:38f195787a09ac37c2db1b",
         "android_client_info": {
-          "package_name": "com.example.bracesaligner"
+          "package_name": "com.smylo"
         }
       },
       "oauth_client": [],
