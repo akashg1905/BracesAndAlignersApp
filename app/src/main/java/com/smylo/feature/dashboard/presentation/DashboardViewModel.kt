@@ -12,6 +12,7 @@ import com.smylo.feature.plan.data.PlanRepository
 import com.smylo.feature.timer.data.TimerRepository
 import com.smylo.feature.profile.data.UserRepository
 import com.smylo.core.network.dto.UserProfileResponse
+import com.smylo.core.network.error.NetworkErrorHandler
 import com.smylo.feature.auth.data.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +69,8 @@ class DashboardViewModel @Inject constructor(
     private val timerRepository: TimerRepository,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
-    private val sessionStore: SessionStore
+    private val sessionStore: SessionStore,
+    private val networkErrorHandler: NetworkErrorHandler
 ) : ViewModel() {
     companion object {
         private const val TAG = "DashboardVM"
@@ -126,6 +128,7 @@ class DashboardViewModel @Inject constructor(
                 userRepository.getUserProfile(force = true)
             } catch (e: Exception) {
                 Log.e(TAG, "Profile sync failed", e)
+                networkErrorHandler.report(e, screen = "dashboard", endpoint = "/api/users/me/profile", showToast = false)
             }
 
             // Only sync from network if we don't have a plan or if it's the first load of the session
@@ -177,6 +180,7 @@ class DashboardViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Refresh failed", e)
+            networkErrorHandler.report(e, screen = "dashboard", endpoint = "/api/sync")
         }
         _uiState.value = _uiState.value.copy(isRefreshing = false)
     }

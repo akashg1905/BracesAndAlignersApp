@@ -3,6 +3,7 @@ package com.smylo.feature.profile.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smylo.feature.profile.data.UserRepository
+import com.smylo.core.network.error.NetworkErrorHandler
 import com.smylo.feature.plan.data.PlanRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import okhttp3.MultipartBody
@@ -32,7 +33,8 @@ data class ProfileUiState(
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val planRepository: PlanRepository
+    private val planRepository: PlanRepository,
+    private val networkErrorHandler: NetworkErrorHandler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -68,10 +70,12 @@ class ProfileViewModel @Inject constructor(
                 initialProfile = loadedState
                 _uiState.value = loadedState
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Failed to load profile: ${e.message}"
+                val message = networkErrorHandler.report(
+                    e,
+                    screen = "profile",
+                    endpoint = "/api/users/me/profile"
                 )
+                _uiState.value = _uiState.value.copy(isLoading = false, error = message)
             }
         }
     }
@@ -105,10 +109,12 @@ class ProfileViewModel @Inject constructor(
                     successMessage = "Profile image updated!"
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isUpdating = false,
-                    error = "Failed to update image: ${e.message}"
+                val message = networkErrorHandler.report(
+                    e,
+                    screen = "profile",
+                    endpoint = "/api/users/me/profile/image"
                 )
+                _uiState.value = _uiState.value.copy(isUpdating = false, error = message)
             }
         }
     }
@@ -139,10 +145,12 @@ class ProfileViewModel @Inject constructor(
                 initialProfile = updatedState
                 _uiState.value = updatedState
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isUpdating = false,
-                    error = "Update failed: ${e.localizedMessage}"
+                val message = networkErrorHandler.report(
+                    e,
+                    screen = "profile",
+                    endpoint = "/api/users/me/profile"
                 )
+                _uiState.value = _uiState.value.copy(isUpdating = false, error = message)
             }
         }
     }

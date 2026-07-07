@@ -4,6 +4,7 @@ import com.smylo.BuildConfig
 import com.smylo.core.database.AppDatabase
 import com.smylo.core.network.api.AlignerPlanApi
 import com.smylo.core.network.api.AuthApi
+import com.smylo.core.network.api.ClientErrorApi
 import com.smylo.core.network.api.NotificationApi
 import com.smylo.core.network.api.TimerApi
 import com.smylo.core.network.api.UserApi
@@ -48,10 +49,13 @@ object NetworkModule {
 
         // Skip adding Authorization header for auth-related endpoints
         val isAuthPath = path.contains("/auth/register") ||
+            path.contains("/auth/login") ||
             path.contains("/auth/verify-otp") ||
             path.contains("/auth/refresh")
 
-        val token = if (isAuthPath) null else runBlocking { readAccessToken(sessionStore, database) }
+        val isPublicPath = isAuthPath || path.contains("/api/client-errors")
+
+        val token = if (isPublicPath) null else runBlocking { readAccessToken(sessionStore, database) }
 
         val newRequest = request.newBuilder().apply {
             if (!token.isNullOrBlank()) {
@@ -178,5 +182,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideUserApi(retrofit: Retrofit): UserApi = retrofit.create(UserApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideClientErrorApi(retrofit: Retrofit): ClientErrorApi =
+        retrofit.create(ClientErrorApi::class.java)
 }
 

@@ -4,12 +4,10 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.core.view.WindowCompat
 import com.smylo.feature.auth.data.TokenRefreshWorker
+import com.smylo.feature.errors.data.ClientErrorRepository
 import com.smylo.feature.notifications.TimerCheckWorker
 import java.util.concurrent.TimeUnit
 import dagger.hilt.android.HiltAndroidApp
@@ -20,6 +18,9 @@ class BracesApp : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var clientErrorRepository: ClientErrorRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -47,6 +48,8 @@ class BracesApp : Application(), Configuration.Provider {
             ExistingPeriodicWorkPolicy.KEEP,
             tokenRefreshRequest
         )
+
+        clientErrorRepository.enqueueSync()
     }
 }
 

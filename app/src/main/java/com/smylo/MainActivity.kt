@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
+import com.smylo.core.common.ErrorMessenger
 import com.smylo.core.preferences.SessionStore
 import com.smylo.feature.notifications.NotificationHelper
 import com.google.firebase.messaging.FirebaseMessaging
@@ -24,6 +25,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionStore: SessionStore
 
+    @Inject
+    lateinit var errorMessenger: ErrorMessenger
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -36,7 +40,7 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermissionIfNeeded()
         fetchAndStoreFcmToken()
         setContent {
-            App()
+            App(errorMessenger = errorMessenger)
         }
     }
 

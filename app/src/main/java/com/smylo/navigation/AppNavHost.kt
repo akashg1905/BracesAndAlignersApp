@@ -2,13 +2,16 @@ package com.smylo.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.smylo.feature.auth.presentation.AuthScreen
+import com.smylo.feature.auth.presentation.LoginScreen
+import com.smylo.feature.auth.presentation.RegisterScreen
 import com.smylo.feature.auth.presentation.AuthViewModel
+import com.smylo.feature.auth.presentation.AuthFlow
 import com.smylo.feature.auth.presentation.SplashScreen
 import com.smylo.feature.auth.presentation.SplashViewModel
 import com.smylo.feature.dashboard.presentation.DashboardScreen
@@ -16,6 +19,8 @@ import com.smylo.feature.dashboard.presentation.DashboardViewModel
 import com.smylo.feature.plan.presentation.PlanSetupScreen
 import com.smylo.feature.plan.presentation.PlanViewModel
 import com.smylo.feature.plan.presentation.ScheduleScreen
+import com.smylo.feature.profile.presentation.AccountSettingsScreen
+import com.smylo.feature.profile.presentation.AccountSettingsViewModel
 import com.smylo.feature.profile.presentation.EditProfileScreen
 import com.smylo.feature.profile.presentation.ProfileScreen
 import com.smylo.feature.profile.presentation.ProfileViewModel
@@ -29,7 +34,7 @@ fun AppNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Routes.SPLASH) {
         composable(Routes.SPLASH) {
             val viewModel: SplashViewModel = hiltViewModel()
-            val destination = viewModel.destination.collectAsStateWithLifecycle().value
+            val destination by viewModel.destination.collectAsStateWithLifecycle()
             LaunchedEffect(destination) {
                 val target = destination ?: return@LaunchedEffect
                 navController.navigate(target) {
@@ -38,24 +43,58 @@ fun AppNavHost(navController: NavHostController) {
             }
             SplashScreen()
         }
-        composable(Routes.AUTH) {
+        composable(Routes.AUTH_LOGIN) {
             val viewModel: AuthViewModel = hiltViewModel()
             val state = viewModel.uiState.collectAsStateWithLifecycle().value
             LaunchedEffect(state.loggedIn) {
                 if (state.loggedIn) {
                     navController.navigate(Routes.DASHBOARD) {
-                        popUpTo(Routes.AUTH) { inclusive = true }
+                        popUpTo(Routes.AUTH_LOGIN) { inclusive = true }
                     }
                 }
             }
-            AuthScreen(
+            LoginScreen(
                 state = state,
                 onEmailChange = viewModel::onEmailChange,
                 onPhoneNumberChange = viewModel::onPhoneNumberChange,
                 onOtpChange = viewModel::onOtpChange,
-                onRequestOtp = viewModel::requestOtp,
-                onVerifyOtp = viewModel::verifyOtp,
-                onDismissError = viewModel::dismissError
+                onRequestOtp = { viewModel.requestOtp(AuthFlow.LOGIN) },
+                onResendOtp = { viewModel.resendOtp(AuthFlow.LOGIN) },
+                onVerifyOtp = { viewModel.verifyOtp(AuthFlow.LOGIN) },
+                onNavigateToRegister = {
+                    navController.navigate(Routes.AUTH_REGISTER)
+                },
+                onDismissSuccessMessage = viewModel::dismissSuccessMessage
+            )
+        }
+        composable(Routes.AUTH_REGISTER) {
+            val viewModel: AuthViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
+            LaunchedEffect(state.loggedIn) {
+                if (state.loggedIn) {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(Routes.AUTH_REGISTER) { inclusive = true }
+                    }
+                }
+            }
+            RegisterScreen(
+                state = state,
+                onBack = { navController.popBackStack() },
+                onFirstNameChange = viewModel::onFirstNameChange,
+                onLastNameChange = viewModel::onLastNameChange,
+                onEmailChange = viewModel::onEmailChange,
+                onPhoneNumberChange = viewModel::onPhoneNumberChange,
+                onDateOfBirthChange = viewModel::onDateOfBirthChange,
+                onOtpChange = viewModel::onOtpChange,
+                onRequestOtp = { viewModel.requestOtp(AuthFlow.REGISTER) },
+                onResendOtp = { viewModel.resendOtp(AuthFlow.REGISTER) },
+                onVerifyOtp = { viewModel.verifyOtp(AuthFlow.REGISTER) },
+                onNavigateToLogin = {
+                    navController.navigate(Routes.AUTH_LOGIN) {
+                        popUpTo(Routes.AUTH_REGISTER) { inclusive = true }
+                    }
+                },
+                onDismissSuccessMessage = viewModel::dismissSuccessMessage
             )
         }
         composable(Routes.PLAN_SETUP) {
@@ -90,7 +129,7 @@ fun AppNavHost(navController: NavHostController) {
             
             LaunchedEffect(state.isLoggedIn) {
                 if (!state.isLoggedIn) {
-                    navController.navigate(Routes.AUTH) {
+                    navController.navigate(Routes.AUTH_LOGIN) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }
                     }
                 }
@@ -136,7 +175,29 @@ fun AppNavHost(navController: NavHostController) {
                     }
                 },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) },
-                onNavigateToSchedule = { navController.navigate(Routes.SCHEDULE) }
+                onNavigateToSchedule = { navController.navigate(Routes.SCHEDULE) },
+                onNavigateToAccountSettings = { navController.navigate(Routes.ACCOUNT_SETTINGS) }
+            )
+        }
+        composable(Routes.ACCOUNT_SETTINGS) {
+            val viewModel: AccountSettingsViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
+
+            LaunchedEffect(state.loggedOut) {
+                if (state.loggedOut) {
+                    navController.navigate(Routes.AUTH_LOGIN) {
+                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                    }
+                }
+            }
+
+            AccountSettingsScreen(
+                state = state,
+                onBack = { navController.popBackStack() },
+                onUpdateSetting = viewModel::updateSettingValue,
+                onSaveSettings = viewModel::saveSettings,
+                onLogout = viewModel::logout,
+                onClearMessages = viewModel::clearMessages
             )
         }
         composable(Routes.EDIT_PROFILE) {

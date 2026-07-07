@@ -90,14 +90,6 @@ fun EditProfileScreen(
         }
     }
 
-    LaunchedEffect(state.error) {
-        state.error?.let {
-            snackbarHostState.showSnackbar(it)
-            delay(3000)
-            onClearMessages()
-        }
-    }
-    
     // Parse the current DOB to show it in the picker when it opens
     val initialDateMillis = remember(state.dob) {
         try {

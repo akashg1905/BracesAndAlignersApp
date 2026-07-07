@@ -2,18 +2,19 @@ package com.smylo.core.network.dto
 
 import com.google.gson.annotations.SerializedName
 
-data class OtpSendRequest(
+data class AuthCredentialsRequest(
     val email: String,
     @SerializedName("phone")
-    val phoneNumber: String
+    val phone: String
 )
 
 data class OtpVerifyRequest(
+    @SerializedName("code")
+    val code: String,
     val email: String,
     @SerializedName("phone")
-    val phoneNumber: String,
-    @SerializedName("code")
-    val otpCode: String
+    val phone: String,
+    val purpose: String
 )
 
 data class RefreshTokenRequest(
@@ -26,8 +27,6 @@ data class AuthTokenResponse(
     val accessToken: String,
     @SerializedName("refreshToken")
     val refreshToken: String? = null,
-    /** FastAPI often omits this; app falls back to JWT "sub" in [com.smylo.feature.auth.data.AuthRepository]. */
     @SerializedName("userId")
     val userId: String? = null
 )
-

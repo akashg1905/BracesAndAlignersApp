@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.smylo.core.database.AppDatabase
 import com.smylo.core.database.dao.AlignerPlanDao
 import com.smylo.core.database.dao.AuthSessionDao
+import com.smylo.core.database.dao.ClientErrorDao
 import com.smylo.core.database.dao.NonWearTimerDao
 import dagger.Module
 import dagger.Provides
@@ -50,11 +51,32 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS client_error_log (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    screen TEXT NOT NULL,
+                    endpoint TEXT,
+                    category TEXT NOT NULL,
+                    userMessage TEXT NOT NULL,
+                    technicalDetail TEXT NOT NULL,
+                    httpStatus INTEGER,
+                    appVersion TEXT NOT NULL,
+                    occurredAtMillis INTEGER NOT NULL,
+                    synced INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "braces_db")
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_5_6)
             .fallbackToDestructiveMigration() // Safety net for development
             .build()
     }
@@ -67,5 +89,8 @@ object DatabaseModule {
 
     @Provides
     fun provideNonWearTimerDao(db: AppDatabase): NonWearTimerDao = db.nonWearTimerDao()
+
+    @Provides
+    fun provideClientErrorDao(db: AppDatabase): ClientErrorDao = db.clientErrorDao()
 }
 

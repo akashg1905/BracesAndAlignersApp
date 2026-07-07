@@ -2,6 +2,7 @@ package com.smylo.feature.profile.data
 
 import com.smylo.core.network.api.UserApi
 import com.smylo.core.network.dto.UpdateProfileRequest
+import com.smylo.core.network.dto.UpdateUserSettingsRequest
 import com.smylo.core.network.dto.UserProfileResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,5 +56,12 @@ class UserRepository @Inject constructor(
         cachedProfile = null
         _profileFlow.value = null
     }
+
+    suspend fun getSettingsCatalog() = userApi.getSettingsCatalog()
+
+    suspend fun getUserSettings() = userApi.getUserSettings()
+
+    suspend fun updateUserSettings(settings: Map<String, String>) =
+        userApi.updateUserSettings(UpdateUserSettingsRequest(settings = settings))
 }
 

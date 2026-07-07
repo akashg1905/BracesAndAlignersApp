@@ -7,8 +7,8 @@ import com.smylo.core.database.dao.AuthSessionDao
 import com.smylo.core.database.entity.AuthSessionEntity
 import com.smylo.core.network.JwtPayloadParser
 import com.smylo.core.network.api.AuthApi
+import com.smylo.core.network.dto.AuthCredentialsRequest
 import com.smylo.core.network.dto.DeviceTokenRequest
-import com.smylo.core.network.dto.OtpSendRequest
 import com.smylo.core.network.dto.OtpVerifyRequest
 import com.smylo.core.network.dto.RefreshTokenRequest
 import com.smylo.core.preferences.SessionStore
@@ -30,14 +30,23 @@ class AuthRepository @Inject constructor(
     private val sessionStore: SessionStore,
     private val database: AppDatabase
 ) {
-    suspend fun sendOtp(email: String, phoneNumber: String) {
-        authApi.sendOtp(OtpSendRequest(email = email, phoneNumber = phoneNumber))
+    suspend fun register(email: String, phone: String) {
+        authApi.register(AuthCredentialsRequest(email = email, phone = phone))
     }
 
-    suspend fun verifyOtp(email: String, phoneNumber: String, code: String) {
-        Log.i("AuthRepository", "verifyOtp called for email: $email")
+    suspend fun login(email: String, phone: String) {
+        authApi.login(AuthCredentialsRequest(email = email, phone = phone))
+    }
+
+    suspend fun verifyOtp(email: String, phone: String, code: String, purpose: String) {
+        Log.i("AuthRepository", "verifyOtp called for email: $email purpose: $purpose")
         val response = authApi.verifyOtp(
-            OtpVerifyRequest(email = email, phoneNumber = phoneNumber, otpCode = code)
+            OtpVerifyRequest(
+                code = code,
+                email = email,
+                phone = phone,
+                purpose = purpose
+            )
         )
         Log.i("AuthRepository", "verifyOtp API success, userId: ${response.userId}")
         val userId = response.userId?.takeIf { it.isNotBlank() }

@@ -47,7 +47,8 @@ fun ProfileScreen(
     onNavigateToProgress: () -> Unit,
     onNavigateToPlan: () -> Unit,
     onNavigateToScan: () -> Unit,
-    onNavigateToSchedule: () -> Unit
+    onNavigateToSchedule: () -> Unit,
+    onNavigateToAccountSettings: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -190,7 +191,7 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = Icons.Default.Settings,
                         title = "Account Settings",
-                        onClick = {}
+                        onClick = onNavigateToAccountSettings
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),

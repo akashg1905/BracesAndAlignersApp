@@ -3,6 +3,7 @@ package com.smylo.feature.plan.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smylo.core.common.AlignerScheduleItem
+import com.smylo.core.network.error.NetworkErrorHandler
 import com.smylo.feature.plan.data.PlanRepository
 import com.smylo.feature.profile.data.UserRepository
 import com.smylo.core.network.dto.UpdateAlignerRequest
@@ -37,7 +38,8 @@ data class PlanUiState(
 @HiltViewModel
 class PlanViewModel @Inject constructor(
     private val repository: PlanRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val networkErrorHandler: NetworkErrorHandler
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlanUiState())
     val uiState: StateFlow<PlanUiState> = _uiState.asStateFlow()
@@ -141,7 +143,14 @@ class PlanViewModel @Inject constructor(
             }.onSuccess {
                 _uiState.update { it.copy(isUpdating = false) }
             }.onFailure { throwable ->
-                _uiState.update { it.copy(isUpdating = false, error = throwable.localizedMessage) }
+                viewModelScope.launch {
+                    val message = networkErrorHandler.report(
+                        throwable,
+                        screen = "schedule",
+                        endpoint = "/api/plan/schedule"
+                    )
+                    _uiState.update { it.copy(isUpdating = false, error = message) }
+                }
             }
         }
     }
@@ -158,7 +167,14 @@ class PlanViewModel @Inject constructor(
             }.onSuccess {
                 _uiState.update { it.copy(loading = false, saved = true) }
             }.onFailure { throwable ->
-                _uiState.update { it.copy(loading = false, error = throwable.localizedMessage) }
+                viewModelScope.launch {
+                    val message = networkErrorHandler.report(
+                        throwable,
+                        screen = "plan_setup",
+                        endpoint = "/api/plan"
+                    )
+                    _uiState.update { it.copy(loading = false, error = message) }
+                }
             }
         }
     }
