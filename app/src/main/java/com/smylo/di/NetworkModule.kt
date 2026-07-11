@@ -6,6 +6,7 @@ import com.smylo.core.network.api.AlignerPlanApi
 import com.smylo.core.network.api.AuthApi
 import com.smylo.core.network.api.ClientErrorApi
 import com.smylo.core.network.api.NotificationApi
+import com.smylo.core.network.api.SupportApi
 import com.smylo.core.network.api.TimerApi
 import com.smylo.core.network.api.UserApi
 import com.smylo.core.network.dto.RefreshTokenRequest
@@ -53,7 +54,9 @@ object NetworkModule {
             path.contains("/auth/verify-otp") ||
             path.contains("/auth/refresh")
 
-        val isPublicPath = isAuthPath || path.contains("/api/client-errors")
+        val isPublicPath = isAuthPath || 
+            path.contains("/api/client-errors") ||
+            path.contains("/api/support/topics/catalog")
 
         val token = if (isPublicPath) null else runBlocking { readAccessToken(sessionStore, database) }
 
@@ -187,5 +190,10 @@ object NetworkModule {
     @Singleton
     fun provideClientErrorApi(retrofit: Retrofit): ClientErrorApi =
         retrofit.create(ClientErrorApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSupportApi(retrofit: Retrofit): SupportApi =
+        retrofit.create(SupportApi::class.java)
 }
 

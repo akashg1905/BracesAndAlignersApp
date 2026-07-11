@@ -43,8 +43,8 @@ class BracesFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         
         // Log the entire raw data to help debug exactly what the backend is sending
-        android.util.Log.i("BracesFCM", "📩 FCM RAW DATA: ${message.data}")
-        android.util.Log.i("BracesFCM", "📩 FCM NOTIFICATION: title='${message.notification?.title}', body='${message.notification?.body}'")
+        android.util.Log.i("SmyloFCM", "📩 FCM RAW DATA: ${message.data}")
+        android.util.Log.i("SmyloFCM", "📩 FCM NOTIFICATION: title='${message.notification?.title}', body='${message.notification?.body}'")
 
         // 1. Try to get title from various possible keys
         val title = message.data["title"] 
@@ -62,7 +62,7 @@ class BracesFirebaseMessagingService : FirebaseMessagingService() {
             ?: message.notification?.body
             ?: "Time for a check! Please check your aligner status." // More descriptive fallback
 
-        android.util.Log.i("BracesFCM", "🔔 DISPATCHING: Title='$title', Body='$body'")
+        android.util.Log.i("SmyloFCM", "🔔 DISPATCHING: Title='$title', Body='$body'")
         
         NotificationHelper.createChannels(this)
         NotificationHelper.send(

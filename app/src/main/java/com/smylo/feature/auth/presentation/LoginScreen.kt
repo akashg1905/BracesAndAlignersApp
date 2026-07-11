@@ -61,9 +61,10 @@ fun LoginScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.successMessage) {
-        state.successMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
+    LaunchedEffect(state.successMessage, state.error) {
+        val message = state.successMessage ?: state.error
+        message?.let {
+            snackbarHostState.showSnackbar(it)
             onDismissSuccessMessage()
         }
     }
@@ -78,7 +79,18 @@ fun LoginScreen(
     val canRequestOtp = isEmailValid && isPhoneValid
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                androidx.compose.material3.Snackbar(
+                    containerColor = if (state.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Text(data.visuals.message)
+                }
+            }
+        },
         containerColor = AuthPageBackground
     ) { padding ->
         Column(

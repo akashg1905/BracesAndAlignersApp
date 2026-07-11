@@ -13,6 +13,8 @@ object Routes {
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
     const val ACCOUNT_SETTINGS = "account_settings"
+    const val HELP_SUPPORT = "help_support"
+    const val CONTACT_SUPPORT = "contact_support"
     const val DAILY_WEAR_DETAIL = "daily_wear_detail"
 }
 

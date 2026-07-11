@@ -21,7 +21,9 @@ import com.smylo.feature.plan.presentation.PlanViewModel
 import com.smylo.feature.plan.presentation.ScheduleScreen
 import com.smylo.feature.profile.presentation.AccountSettingsScreen
 import com.smylo.feature.profile.presentation.AccountSettingsViewModel
+import com.smylo.feature.profile.presentation.ContactSupportScreen
 import com.smylo.feature.profile.presentation.EditProfileScreen
+import com.smylo.feature.profile.presentation.HelpSupportScreen
 import com.smylo.feature.profile.presentation.ProfileScreen
 import com.smylo.feature.profile.presentation.ProfileViewModel
 import com.smylo.feature.scan.presentation.WeeklyScanScreen
@@ -176,7 +178,8 @@ fun AppNavHost(navController: NavHostController) {
                 },
                 onNavigateToScan = { navController.navigate(Routes.SCAN) },
                 onNavigateToSchedule = { navController.navigate(Routes.SCHEDULE) },
-                onNavigateToAccountSettings = { navController.navigate(Routes.ACCOUNT_SETTINGS) }
+                onNavigateToAccountSettings = { navController.navigate(Routes.ACCOUNT_SETTINGS) },
+                onNavigateToHelpSupport = { navController.navigate(Routes.HELP_SUPPORT) }
             )
         }
         composable(Routes.ACCOUNT_SETTINGS) {
@@ -198,6 +201,20 @@ fun AppNavHost(navController: NavHostController) {
                 onSaveSettings = viewModel::saveSettings,
                 onLogout = viewModel::logout,
                 onClearMessages = viewModel::clearMessages
+            )
+        }
+        composable(Routes.HELP_SUPPORT) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val state = viewModel.uiState.collectAsStateWithLifecycle().value
+            HelpSupportScreen(
+                profileImageUrl = state.profileImage,
+                onBack = { navController.popBackStack() },
+                onNavigateToContactSupport = { navController.navigate(Routes.CONTACT_SUPPORT) }
+            )
+        }
+        composable(Routes.CONTACT_SUPPORT) {
+            ContactSupportScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Routes.EDIT_PROFILE) {

@@ -48,7 +48,8 @@ fun ProfileScreen(
     onNavigateToPlan: () -> Unit,
     onNavigateToScan: () -> Unit,
     onNavigateToSchedule: () -> Unit,
-    onNavigateToAccountSettings: () -> Unit = {}
+    onNavigateToAccountSettings: () -> Unit = {},
+    onNavigateToHelpSupport: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -200,7 +201,7 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = Icons.Default.Help,
                         title = "Help & Support",
-                        onClick = {}
+                        onClick = onNavigateToHelpSupport
                     )
                 }
             }

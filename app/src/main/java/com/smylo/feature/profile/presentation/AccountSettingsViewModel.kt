@@ -29,10 +29,13 @@ data class AccountSettingsUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val settings: List<SettingItemUi> = emptyList(),
+    val initialSettings: Map<String, String> = emptyMap(),
     val successMessage: String? = null,
     val error: String? = null,
     val loggedOut: Boolean = false
-)
+) {
+    val hasChanges: Boolean = settings.any { initialSettings[it.settingName] != it.value }
+}
 
 @HiltViewModel
 class AccountSettingsViewModel @Inject constructor(
@@ -55,22 +58,31 @@ class AccountSettingsViewModel @Inject constructor(
             try {
                 val catalog = userRepository.getSettingsCatalog()
                 val saved = userRepository.getUserSettings()
+                
                 val savedMap = saved.settings.orEmpty()
+                    .filter { it.settingName != null && it.settingValue != null }
+                    .associate { it.settingName!! to it.settingValue!! }
 
-                val items = catalog.settings.map { item ->
-                    val savedValue = savedMap[item.settingName].orEmpty()
-                    SettingItemUi(
-                        settingName = item.settingName,
-                        label = item.label,
-                        description = item.description.orEmpty(),
-                        valueKind = item.valueKind.lowercase(),
-                        value = savedValue,
-                        isUnset = savedValue.isBlank()
-                    )
-                }
+                val items = catalog.settings.orEmpty()
+                    .filter { it.settingName != null && it.label != null }
+                    .map { item ->
+                        val savedValue = savedMap[item.settingName].orEmpty()
+                        SettingItemUi(
+                            settingName = item.settingName!!,
+                            label = item.label!!,
+                            description = item.description.orEmpty(),
+                            valueKind = (item.valueKind ?: "text").lowercase(),
+                            value = savedValue,
+                            isUnset = savedValue.isBlank()
+                        )
+                    }
 
                 _uiState.update {
-                    it.copy(isLoading = false, settings = items)
+                    it.copy(
+                        isLoading = false,
+                        settings = items,
+                        initialSettings = items.associate { it.settingName to it.value }
+                    )
                 }
             } catch (e: Exception) {
                 val message = networkErrorHandler.report(
@@ -110,7 +122,8 @@ class AccountSettingsViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(
                         isSaving = false,
-                        successMessage = "Settings saved successfully",
+                        successMessage = "Settings updated successfully!",
+                        initialSettings = state.settings.associate { it.settingName to it.value },
                         settings = state.settings.map { item ->
                             item.copy(isUnset = item.value.isBlank())
                         }

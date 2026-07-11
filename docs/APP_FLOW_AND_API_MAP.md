@@ -1,4 +1,4 @@
-# BracesAndAligner App Flow and API Map
+# Smylo App Flow and API Map
 
 This document explains:
 - how users move across screens,

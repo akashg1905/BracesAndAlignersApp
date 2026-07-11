@@ -1,4 +1,4 @@
-# BracesAndAligner (MVP)
+# SmyloApp (MVP)
 
 **New to Kotlin?** Read the full walkthrough: [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) (libraries, package map, screen flows, diagrams).
 
@@ -10,13 +10,13 @@
 - WorkManager + Firebase Cloud Messaging
 
 ## Project Structure
-- `app/src/main/java/com/example/bracesaligner/core`: common, database, network, preferences
-- `app/src/main/java/com/example/bracesaligner/feature/auth`: OTP auth flow
-- `app/src/main/java/com/example/bracesaligner/feature/plan`: aligner plan + schedule
-- `app/src/main/java/com/example/bracesaligner/feature/timer`: non-wear timer + weekly summary
-- `app/src/main/java/com/example/bracesaligner/feature/dashboard`: aggregated home state
-- `app/src/main/java/com/example/bracesaligner/feature/notifications`: local notifications + FCM service + worker
-- `app/src/main/java/com/example/bracesaligner/navigation`: routes + nav host
+- `app/src/main/java/com/example/smylo/core`: common, database, network, preferences
+- `app/src/main/java/com/example/smylo/feature/auth`: OTP auth flow
+- `app/src/main/java/com/example/smylo/feature/plan`: aligner plan + schedule
+- `app/src/main/java/com/example/smylo/feature/timer`: non-wear timer + weekly summary
+- `app/src/main/java/com/example/smylo/feature/dashboard`: aggregated home state
+- `app/src/main/java/com/example/smylo/feature/notifications`: local notifications + FCM service + worker
+- `app/src/main/java/com/example/smylo/navigation`: routes + nav host
 
 ## API Design (High Level)
 - `POST /auth/register` -> send OTP (request body: `email`, `phone`)

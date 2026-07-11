@@ -45,7 +45,7 @@ class TimerCheckWorker @AssistedInject constructor(
                     context = applicationContext,
                     id = 2001,
                     channel = NotificationHelper.CHANNEL_REMINDER,
-                    title = "Braces & Aligner",
+                    title = "Smylo",
                     body = "Daily summary: Open app to review your non-wear time."
                 )
                 sessionStore.saveLastDailyReminderDay(today)
