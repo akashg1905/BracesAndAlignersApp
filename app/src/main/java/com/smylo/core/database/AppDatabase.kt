@@ -22,7 +22,7 @@ import com.smylo.core.database.entity.NonWearSessionEntity
         DailyNonWearSummaryEntity::class,
         ClientErrorEntity::class
     ],
-    version = 6,
+    version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

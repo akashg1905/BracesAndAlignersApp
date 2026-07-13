@@ -27,6 +27,7 @@ Thumbs.db
 *.keystore
 *.pk8
 *.p12
+keystore.properties
 
 # Compiled / packaged outputs
 *.class
