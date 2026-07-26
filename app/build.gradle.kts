@@ -15,8 +15,8 @@ android {
         applicationId = "com.smylo"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-beta.1"
+        versionCode = 2
+        versionName = "0.1.0-beta.2"
 
         val apiUrl = project.findProperty("API_BASE_URL") ?: "http://10.0.2.2:8000/"
         buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
