@@ -3,6 +3,7 @@ package com.smylo.core.network.dto
 import com.google.gson.annotations.SerializedName
 
 data class AuthCredentialsRequest(
+    @SerializedName("email")
     val email: String,
     @SerializedName("phone")
     val phone: String
@@ -11,9 +12,11 @@ data class AuthCredentialsRequest(
 data class OtpVerifyRequest(
     @SerializedName("code")
     val code: String,
+    @SerializedName("email")
     val email: String,
     @SerializedName("phone")
     val phone: String,
+    @SerializedName("purpose")
     val purpose: String
 )
 

@@ -1,5 +1,4 @@
 package com.smylo.core.network.api
-
 import com.smylo.core.network.dto.UpdateProfileRequest
 import com.smylo.core.network.dto.UpdateUserSettingsRequest
 import com.smylo.core.network.dto.SettingsCatalogResponse
