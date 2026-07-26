@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -15,8 +15,8 @@ android {
         applicationId = "com.smylo"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-beta.1"
+        versionCode = 2
+        versionName = "0.1.0-beta.2"
 
         val apiUrl = project.findProperty("API_BASE_URL") ?: "http://10.0.2.2:8000/"
         buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
@@ -65,8 +65,8 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.hilt.work)
-    kapt(libs.hilt.compiler)
-    kapt(libs.hilt.work.compiler)
+    ksp(libs.hilt.compiler)
+    ksp(libs.hilt.work.compiler)
 
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
@@ -74,7 +74,7 @@ dependencies {
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
-    kapt(libs.room.compiler)
+    ksp(libs.room.compiler)
 
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.androidx.datastore.preferences)

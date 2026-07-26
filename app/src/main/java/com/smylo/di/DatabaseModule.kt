@@ -75,7 +75,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(context, AppDatabase::class.java, "braces_db")
+        return Room.databaseBuilder(context, AppDatabase::class.java, "smylo_db")
             .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_5_6)
             .fallbackToDestructiveMigration() // Safety net for development
             .build()

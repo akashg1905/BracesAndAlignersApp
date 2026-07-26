@@ -62,6 +62,15 @@ class UserRepository @Inject constructor(
     suspend fun getUserSettings() = userApi.getUserSettings()
 
     suspend fun updateUserSettings(settings: Map<String, String>) =
-        userApi.updateUserSettings(UpdateUserSettingsRequest(settings = settings))
+        userApi.updateUserSettings(
+            UpdateUserSettingsRequest(
+                settings = settings.map { (name, value) ->
+                    com.smylo.core.network.dto.UserSettingEntry(
+                        settingName = name,
+                        settingValue = value
+                    )
+                }
+            )
+        )
 }
 

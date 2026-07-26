@@ -1,5 +1,6 @@
 package com.smylo.core.network.error
 
+import com.google.gson.JsonParseException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.ConnectException
@@ -15,25 +16,35 @@ enum class ErrorCategory(val value: String) {
     NOT_FOUND("not_found"),
     VALIDATION("validation_error"),
     RATE_LIMIT("rate_limit"),
+    PARSE("parse_error"),
     UNKNOWN("unknown")
 }
 
 object NetworkErrorMapper {
 
-    fun categorize(throwable: Throwable): ErrorCategory = when (throwable) {
-        is UnknownHostException -> ErrorCategory.NO_INTERNET
-        is SocketTimeoutException -> ErrorCategory.TIMEOUT
-        is ConnectException -> ErrorCategory.CONNECTION
-        is HttpException -> when (throwable.code()) {
-            401, 403 -> ErrorCategory.AUTH
-            404 -> ErrorCategory.NOT_FOUND
-            422 -> ErrorCategory.VALIDATION
-            429 -> ErrorCategory.RATE_LIMIT
-            in 500..599 -> ErrorCategory.SERVER
+    fun categorize(throwable: Throwable): ErrorCategory {
+        val root = rootCause(throwable)
+        return when {
+            root is UnknownHostException || throwable is UnknownHostException ->
+                ErrorCategory.NO_INTERNET
+            root is SocketTimeoutException || throwable is SocketTimeoutException ->
+                ErrorCategory.TIMEOUT
+            root is ConnectException || throwable is ConnectException ->
+                ErrorCategory.CONNECTION
+            throwable is HttpException -> when (throwable.code()) {
+                401, 403 -> ErrorCategory.AUTH
+                404 -> ErrorCategory.NOT_FOUND
+                422 -> ErrorCategory.VALIDATION
+                429 -> ErrorCategory.RATE_LIMIT
+                in 500..599 -> ErrorCategory.SERVER
+                else -> ErrorCategory.UNKNOWN
+            }
+            root is JsonParseException || throwable is JsonParseException ->
+                ErrorCategory.PARSE
+            root is IOException || throwable is IOException ->
+                ErrorCategory.NO_INTERNET
             else -> ErrorCategory.UNKNOWN
         }
-        is IOException -> ErrorCategory.NO_INTERNET
-        else -> ErrorCategory.UNKNOWN
     }
 
     fun toUserMessage(throwable: Throwable): String = when (categorize(throwable)) {
@@ -53,8 +64,18 @@ object NetworkErrorMapper {
             "Some information was invalid. Please review and try again."
         ErrorCategory.RATE_LIMIT ->
             "Too many requests. Please wait a moment and try again."
+        ErrorCategory.PARSE ->
+            "Could not read the server response. Please try again."
         ErrorCategory.UNKNOWN ->
             "Something went wrong. Please try again."
+    }
+
+    private fun rootCause(throwable: Throwable): Throwable {
+        var current = throwable
+        while (current.cause != null && current.cause !== current) {
+            current = current.cause!!
+        }
+        return current
     }
 
     /** Stored locally and sent to backend for analysis — never shown to the user. */

@@ -68,7 +68,7 @@ Declared in [`gradle/libs.versions.toml`](../gradle/libs.versions.toml) and used
 
 ## 3. Package map (what folder is for what)
 
-Root package: `com.example.bracesaligner`
+Root package: `com.example.smylo`
 
 | Package | Purpose |
 |---------|---------|
@@ -119,8 +119,8 @@ flowchart TD
   dash -->|logout| auth
 ```
 
-Route constants live in [`navigation/Routes.kt`](../app/src/main/java/com/example/bracesaligner/navigation/Routes.kt).  
-Wiring lives in [`navigation/AppNavHost.kt`](../app/src/main/java/com/example/bracesaligner/navigation/AppNavHost.kt).
+Route constants live in [`navigation/Routes.kt`](../app/src/main/java/com/example/smylo/navigation/Routes.kt).  
+Wiring lives in [`navigation/AppNavHost.kt`](../app/src/main/java/com/example/smylo/navigation/AppNavHost.kt).
 
 ---
 

@@ -1,4 +1,4 @@
-# BracesAndAligner — Design Document
+# Smylo — Design Document
 
 > **Version:** MVP (Android client)  
 > **Last updated:** July 2026  
@@ -31,7 +31,7 @@
 
 ## 1. Product Vision
 
-**BracesAndAligner** is a patient-facing Android app for clear-aligner orthodontic treatment. It helps users stay compliant by:
+**Smylo** is a patient-facing Android app for clear-aligner orthodontic treatment. It helps users stay compliant by:
 
 - Tracking **non-wear time** (time aligners are removed)
 - Visualizing **treatment progress** across trays
@@ -116,18 +116,18 @@ Repository (@Singleton)
 
 ### Entry Points
 
-| File | Responsibility |
-|------|----------------|
-| `BracesApp.kt` | `@HiltAndroidApp`, WorkManager initialization |
+| File | Responsibility                                                       |
+|------|----------------------------------------------------------------------|
+| `BracesApp.kt` | `@HiltAndroidApp`, WorkManager initialization                        |
 | `MainActivity.kt` | Edge-to-edge window, FCM token registration, notification permission |
-| `App.kt` | `BracesAndAlignerTheme` + `AppNavHost` root |
+| `App.kt` | `SmyloTheme` + `AppNavHost` root                                     |
 
 ---
 
 ## 4. Package Structure
 
 ```
-com.example.bracesaligner/
+com.example.smylo/
 ├── MainActivity.kt, App.kt, BracesApp.kt
 ├── navigation/              Routes, AppNavHost
 ├── di/                        NetworkModule, DatabaseModule, PreferencesModule
