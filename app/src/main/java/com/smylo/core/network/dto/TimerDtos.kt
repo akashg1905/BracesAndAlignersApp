@@ -16,20 +16,27 @@ data class TimerSessionRequest(
 )
 
 data class DailySummaryRequest(
+    @SerializedName("dateEpochDay")
     val dateEpochDay: Long,
+    @SerializedName("totalMinutes")
     val totalMinutes: Int
 )
 
 data class DailySummaryResponse(
+    @SerializedName("planId")
     val planId: String?,
+    @SerializedName("totalNonWearHours")
     val totalNonWearHours: Double?,
+    @SerializedName("averageDailyWearHours")
     val averageDailyWearHours: Double?,
+    @SerializedName("averageDailyWearDisplay")
     val averageDailyWearDisplay: String?,
+    @SerializedName("averageWearHours")
     val averageWearHours: Double?,
+    @SerializedName("byAligner")
     val byAligner: List<AlignerBreakdownItem>?,
+    @SerializedName("dailyBreakdown")
     val dailyBreakdown: List<DailyBreakdownItem>?,
-    
-    // Restoration fields
     @SerializedName("todayNonWearMinutes")
     val todayNonWearMinutes: Int? = null,
     @SerializedName("activeSession")
@@ -37,14 +44,20 @@ data class DailySummaryResponse(
 )
 
 data class AlignerBreakdownItem(
+    @SerializedName("alignerNumber")
     val alignerNumber: Int,
+    @SerializedName("nonWearHours")
     val nonWearHours: Double,
+    @SerializedName("sessionCount")
     val sessionCount: Int
 )
 
 data class DailyBreakdownItem(
+    @SerializedName("calendarDate")
     val calendarDate: String,
+    @SerializedName("nonWearHours")
     val nonWearHours: Double,
+    @SerializedName("wearHours")
     val wearHours: Double,
     @SerializedName("sessionInformation")
     val sessions: List<TimerSessionResponse>? = null

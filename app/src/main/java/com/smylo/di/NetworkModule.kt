@@ -140,15 +140,22 @@ object NetworkModule {
         authInterceptor: Interceptor,
         authenticator: Authenticator
     ): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .authenticator(authenticator)
-            .addInterceptor(logging)
-            .build()
+
+        // BODY logging is expensive and can leak tokens; keep it debug-only.
+        if (BuildConfig.DEBUG) {
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+            builder.addInterceptor(logging)
+        }
+
+        return builder.build()
     }
 
     @Provides
